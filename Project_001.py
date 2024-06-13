@@ -89,5 +89,5 @@ for side_struct in side_structs:
 #print(all_data[0][0])
 
 pd.DataFrame(joint_data).to_csv('output1.csv')
-print("The data successfully saved!")
+print("The data is successfully saved!")
     
