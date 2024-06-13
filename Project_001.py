@@ -47,33 +47,47 @@ file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1
 data = loadmat(file_path)
 
 side_structs = ['Right', 'Left']
+measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
+
 # WRITE THE NAME OF STRUCTS YOU WANT TO INCLUDE, DO NOT FORGER TO PUT THEM IN ORDERD
 for side_struct in side_structs:    
-    structs = ['c', 'results', side_struct, 'angAtFullCycle']
-    all_data = access_struct(data,structs)
+    for measurement in measurements:
+    
+        structs = ['c', 'results', side_struct, measurement]
+        all_data = access_struct(data,structs)
+        
+        if measurement == 'angAtFullCycle':
 
-    kin_items = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
-    #kin_items = ['Hip']
-    sides = side_struct[0]
+            joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+            #kin_items = ['Hip']
+            sides = side_struct[0]
 
-    #joint_data = np.empty((100,0))
-    #list_joint_kin = []
+            #joint_data = np.empty((100,0))
+            #list_joint_kin = []
 
-    for joint in (kin_items):
-        for side in sides:
+            for joint in (joint_names):
+                for side in sides:
+                    joint_with_side = side + joint
+                    joint_kin = all_data[0,0][joint_with_side][0][0]
+                    #list_joint_kin = joint_kin.flatten(order = "F")
+                    joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
+                    #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
+                    #df.append(joint_with_side)
+                    
+                    #joint_data.append(joint_kin)
+                    joint_data = np.concatenate((joint_data,joint_kin), axis = 1)
+        
+        else:
 
-            joint_with_side = side + joint
-            joint_kin = all_data[0,0][joint_with_side][0][0]
-            #list_joint_kin = joint_kin.flatten(order = "F")
-            joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
-            #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
-            #df.append(joint_with_side)
+            variable = all_data[0][0]
+            filler = np.full((99,1), np.nan)
+            variable = np.vstack((variable, filler))
+            joint_data = np.concatenate((joint_data,variable), axis = 1)
             
-            #joint_data.append(joint_kin)
-            joint_data = np.append(joint_data,joint_kin, axis = 1)
+            
 
-
-#print(joint_data)
+#print(all_data[0][0])
 
 pd.DataFrame(joint_data).to_csv('output1.csv')
+print("The data successfully saved!")
     
