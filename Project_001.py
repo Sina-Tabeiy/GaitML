@@ -6,6 +6,16 @@ import matplotlib.pyplot as plt
 
 
 # RREAD .mat    FILES IN PYTHON
+# Identifying the dataset
+def load_data(file_path):
+
+    data = loadmat(file_path)
+
+    print("--------------------------------")
+    print("The data is now loaded!")
+
+    return data
+
 
 def access_struct (data,structs):
     for struct in structs:
@@ -16,6 +26,8 @@ def access_struct (data,structs):
             data = data[struct]
         
     return data
+
+
 
 
 
@@ -40,54 +52,63 @@ def access_struct (data,structs):
     return data
 
 """
+
+
 joint_data = np.empty((100,0))
 
 # MAKE SURE YOU DO NOT SQUEEZE DATA BY  squeeze_me= True. OTHERWISE THE CODE RUNS INTO ERRORS
-file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
-data = loadmat(file_path)
+#file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
+#data = loadmat(file_path)
+directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
 
-side_structs = ['Right', 'Left']
-measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
+mat_files = [f for f in os.listdir(directory) if (f.endswith("ELokomat.mat") or f.endswith("eLokomat.mat"))]
 
-# WRITE THE NAME OF STRUCTS YOU WANT TO INCLUDE, DO NOT FORGER TO PUT THEM IN ORDERD
-for side_struct in side_structs:    
-    for measurement in measurements:
-    
-        structs = ['c', 'results', side_struct, measurement]
-        all_data = access_struct(data,structs)
+for index, file in enumerate(mat_files):
+    file_path = str()
+    file_path = os.path.join(directory, file) 
+    data = load_data(file_path)
+
+    side_structs = ['Right', 'Left']
+    measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
+
+    # WRITE THE NAME OF STRUCTS YOU WANT TO INCLUDE, DO NOT FORGER TO PUT THEM IN ORDERD
+    for side_struct in side_structs:    
+        for measurement in measurements:
         
-        if measurement == 'angAtFullCycle':
+            structs = ['c', 'results', side_struct, measurement]
+            all_data = access_struct(data,structs)
+            
+            if measurement == 'angAtFullCycle':
 
-            joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
-            #kin_items = ['Hip']
-            sides = side_struct[0]
+                joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+                #kin_items = ['Hip']
+                sides = side_struct[0]
 
-            #joint_data = np.empty((100,0))
-            #list_joint_kin = []
+                for joint in (joint_names):
+                    for side in sides:
 
-            for joint in (joint_names):
-                for side in sides:
-                    joint_with_side = side + joint
-                    joint_kin = all_data[0,0][joint_with_side][0][0]
-                    #list_joint_kin = joint_kin.flatten(order = "F")
-                    joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
-                    #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
-                    #df.append(joint_with_side)
-                    
-                    #joint_data.append(joint_kin)
-                    joint_data = np.concatenate((joint_data,joint_kin), axis = 1)
+                        joint_with_side = side + joint
+                        joint_kin = all_data[0,0][joint_with_side][0][0]
+                        #list_joint_kin = joint_kin.flatten(order = "F")
+                        joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
+                        #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
+                        #df.append(joint_with_side)
+                        
+                        #joint_data.append(joint_kin)
+                        #joint_kin = [joint_with_side, joint_with_side, joint_with_side].append(joint_kin)
+                        joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
+            
+            else:
+
+                variable = all_data[0][0]
+                filler = np.full((99,1), np.nan)
+                variable = np.vstack((variable, filler))
+                joint_data = np.concatenate((joint_data,variable), axis = 1)
+                
+                
+
+    #print(all_data[0][0])
+
+    pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
+    print("The data is successfully saved!")
         
-        else:
-
-            variable = all_data[0][0]
-            filler = np.full((99,1), np.nan)
-            variable = np.vstack((variable, filler))
-            joint_data = np.concatenate((joint_data,variable), axis = 1)
-            
-            
-
-#print(all_data[0][0])
-
-pd.DataFrame(joint_data).to_csv('output1.csv')
-print("The data is successfully saved!")
-    
