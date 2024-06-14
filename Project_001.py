@@ -7,7 +7,7 @@ from scipy import interpolate
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-
+from sklearn.decomposition import PCA
 
 
 #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
@@ -75,7 +75,7 @@ for index, file in enumerate(mat_files):
     side_structs = ['Right', 'Left']
     measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
     joint_data = np.empty((100,0))
-    
+
     # WRITE THE NAME OF STRUCTS YOU WANT TO INCLUDE, DO NOT FORGER TO PUT THEM IN ORDERD
     for side_struct in side_structs:    
         for measurement in measurements:
@@ -104,14 +104,14 @@ for index, file in enumerate(mat_files):
                         
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
             
-            """
+        """
             else:
 
                 variable = all_data[0][0]
                 filler = np.full((99,1), np.nan)
                 variable = np.vstack((variable, filler))
                 joint_data = np.concatenate((joint_data,variable), axis = 1)
-            """    
+        """  
                 
 
     #print(all_data[0][0])
@@ -123,30 +123,30 @@ for index, file in enumerate(mat_files):
 
 
 #------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
+
+
+# ----------------       Reloading data      ----------------
 def load_data(directory_str):
 
     combined_df = pd.DataFrame()
-
     csv_files = [f for f in os.listdir(directory_str) if f.endswith(".csv")]
 
     for index, file in enumerate(csv_files):
         
         file_path = os.path.join(directory_str, file)
         csv = pd.read_csv(file_path)
-        
         dependent_variables = csv
-        independent_variable = pd.Series(range(len(dependent_variables)))
-                                         
-        interpolated_dependent_variable = pd.DataFrame()
+        independent_variable = pd.Series(range(len(dependent_variables)))     
+        
         interpolation_function = pd.DataFrame()
-
+        interpolated_dependent_variable = pd.DataFrame()
 
         for i in range(len(dependent_variables.columns)):
             scaled_independent_variable = np.linspace(0, len(dependent_variables) - 1, num=100)
             interpolation_function = interpolate.interp1d(independent_variable, dependent_variables.iloc[:, i], kind='cubic')
             interpolated_dependent_variable[f'{i + 1}'] = interpolation_function(scaled_independent_variable)
         
-        # Decide on the "feature_range" whether the range is suitable for gait analysis or not
+        # /?/ Decide on the "feature_range" whether the range is suitable for gait analysis or not
         scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
         scaled_dependent_variables = pd.DataFrame(scaler.fit_transform(interpolated_dependent_variable))
         scaled_dependent_variables.insert(0, 'Subject ID', index + 1)
@@ -168,9 +168,24 @@ def apply_kmeans(data, max_k):
     for k in range(2, max_k):
         model = KMeans(n_clusters=k, init='k-means++', n_init=30, random_state=0)
         prediction = model.fit(data)
+        labels = model.labels_
         inertia.append(model.inertia_)
-        silhouette_scores.append(silhouette_score(data, model.labels_))
+        silhouette_scores.append(silhouette_score(labels))
+        
 
+        pca = PCA(n_components=2)
+        reduced_data = pca.fit_transform(data)
+        # Create a scatter plot of the clustered data
+        plt.figure(figsize=(10, 7))
+        for cluster in range(k):
+            plt.scatter(reduced_data[labels == cluster, 0], reduced_data[labels == cluster, 1], label=f'Cluster {cluster}')
+        plt.title('K-means Clustering Results (PCA-reduced data)')
+        plt.xlabel('PCA Component 1')
+        plt.ylabel('PCA Component 2')
+        plt.legend()
+        plt.show()
+
+"""
     plt.figure(figsize=(10, 5))
     plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
     plt.title('Elbow Method')
@@ -185,6 +200,8 @@ def apply_kmeans(data, max_k):
     plt.xlabel('Number of clusters')
     plt.ylabel('Silhouette Score')
     plt.show()
+"""    
+    
 
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
 data = load_data(directory_str)
