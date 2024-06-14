@@ -3,7 +3,14 @@ import numpy as np
 import os
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
+from scipy import interpolate
+from sklearn import preprocessing
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
+
+
+#------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
 
 # RREAD .mat    FILES IN PYTHON
 # Identifying the dataset
@@ -29,9 +36,6 @@ def access_struct (data,structs):
 
 
 
-
-
-
 """
 
 def access_struct (data,structs):
@@ -50,11 +54,11 @@ def access_struct (data,structs):
             data = data[struct]
                 
     return data
-
 """
 
 
-joint_data = np.empty((100,0))
+
+
 
 # MAKE SURE YOU DO NOT SQUEEZE DATA BY  squeeze_me= True. OTHERWISE THE CODE RUNS INTO ERRORS
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
@@ -70,7 +74,8 @@ for index, file in enumerate(mat_files):
 
     side_structs = ['Right', 'Left']
     measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
-
+    joint_data = np.empty((100,0))
+    
     # WRITE THE NAME OF STRUCTS YOU WANT TO INCLUDE, DO NOT FORGER TO PUT THEM IN ORDERD
     for side_struct in side_structs:    
         for measurement in measurements:
@@ -96,19 +101,91 @@ for index, file in enumerate(mat_files):
                         
                         #joint_data.append(joint_kin)
                         #joint_kin = [joint_with_side, joint_with_side, joint_with_side].append(joint_kin)
+                        
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
             
+            """
             else:
 
                 variable = all_data[0][0]
                 filler = np.full((99,1), np.nan)
                 variable = np.vstack((variable, filler))
                 joint_data = np.concatenate((joint_data,variable), axis = 1)
-                
+            """    
                 
 
     #print(all_data[0][0])
 
     pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
     print("The data is successfully saved!")
+
+
+
+
+#------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
+def load_data(directory_str):
+
+    combined_df = pd.DataFrame()
+
+    csv_files = [f for f in os.listdir(directory_str) if f.endswith(".csv")]
+
+    for index, file in enumerate(csv_files):
         
+        file_path = os.path.join(directory_str, file)
+        csv = pd.read_csv(file_path)
+        
+        dependent_variables = csv
+        independent_variable = pd.Series(range(len(dependent_variables)))
+                                         
+        interpolated_dependent_variable = pd.DataFrame()
+        interpolation_function = pd.DataFrame()
+
+
+        for i in range(len(dependent_variables.columns)):
+            scaled_independent_variable = np.linspace(0, len(dependent_variables) - 1, num=100)
+            interpolation_function = interpolate.interp1d(independent_variable, dependent_variables.iloc[:, i], kind='cubic')
+            interpolated_dependent_variable[f'{i + 1}'] = interpolation_function(scaled_independent_variable)
+        
+        # Decide on the "feature_range" whether the range is suitable for gait analysis or not
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        scaled_dependent_variables = pd.DataFrame(scaler.fit_transform(interpolated_dependent_variable))
+        scaled_dependent_variables.insert(0, 'Subject ID', index + 1)
+        scaled_dependent_variables.columns = scaled_dependent_variables.columns.astype(str)
+
+        combined_df = pd.concat([combined_df, scaled_dependent_variables], ignore_index=True)
+        #combined_df.to_csv("allfiles.csv")
+    
+    print("--------------------------------")
+    print("The shape of data is: {}".format(combined_df.shape))
+    print("--------------------------------")
+    print("The data is now ready to be analyzed!")
+    return combined_df
+
+def apply_kmeans(data, max_k):
+    inertia = []
+    silhouette_scores = []
+
+    for k in range(2, max_k):
+        model = KMeans(n_clusters=k, init='k-means++', n_init=30, random_state=0)
+        prediction = model.fit(data)
+        inertia.append(model.inertia_)
+        silhouette_scores.append(silhouette_score(data, model.labels_))
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
+    plt.title('Elbow Method')
+    plt.xlabel('Number of clusters')
+    plt.ylabel('Inertia')
+    plt.show()
+
+    # Plotting the Silhouette Scores
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(2, max_k), silhouette_scores, marker='o', linestyle='--')
+    plt.title('Silhouette Scores for Different k')
+    plt.xlabel('Number of clusters')
+    plt.ylabel('Silhouette Score')
+    plt.show()
+
+directory_str = r'D:\Sina Tabeiy\Clustering Project'
+data = load_data(directory_str)
+apply_kmeans(data, 5)
