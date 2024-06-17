@@ -8,8 +8,11 @@ from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+#from tslearn.clustering import TimeSeriesKMeans, silhouette_score
 
 
+
+"""
 #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
 
 # RREAD .mat    FILES IN PYTHON
@@ -35,6 +38,7 @@ def access_struct (data,structs):
     return data
 
 
+"""
 
 """
 
@@ -57,6 +61,7 @@ def access_struct (data,structs):
 """
 
 
+"""
 
 
 
@@ -103,8 +108,9 @@ for index, file in enumerate(mat_files):
                         #joint_kin = [joint_with_side, joint_with_side, joint_with_side].append(joint_kin)
                         
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
-            
-        """
+         
+        """   
+"""
             else:
 
                 variable = all_data[0][0]
@@ -112,14 +118,14 @@ for index, file in enumerate(mat_files):
                 variable = np.vstack((variable, filler))
                 joint_data = np.concatenate((joint_data,variable), axis = 1)
         """  
-                
+
+"""              
 
     #print(all_data[0][0])
 
     pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
     print("The data is successfully saved!")
-
-
+"""
 
 
 #------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
@@ -161,18 +167,27 @@ def load_data(directory_str):
     print("The data is now ready to be analyzed!")
     return combined_df
 
+# ----------------       This applies kmeans to the data      ----------------
 def apply_kmeans(data, max_k):
     inertia = []
     silhouette_scores = []
 
     for k in range(2, max_k):
+        
         model = KMeans(n_clusters=k, init='k-means++', n_init=30, random_state=0)
-        prediction = model.fit(data)
+        model.fit(data)
         labels = model.labels_
         inertia.append(model.inertia_)
-        silhouette_scores.append(silhouette_score(labels))
-        
+        silhouette_scores.append(silhouette_score(data, labels))
 
+        """
+        model = TimeSeriesKMeans(n_clusters=k, metric = "dtw")
+
+        prediction = model.fit_predict(data)
+        labels = model.labels_
+        inertia.append(model.inertia_)
+        silhouette_scores.append(silhouette_score(data, labels, metric = 'dtw'))
+        """
         pca = PCA(n_components=2)
         reduced_data = pca.fit_transform(data)
         # Create a scatter plot of the clustered data
