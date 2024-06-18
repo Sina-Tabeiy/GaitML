@@ -8,7 +8,7 @@ from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-
+"""
 
 
 #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
@@ -82,23 +82,20 @@ for index, file in enumerate(mat_files):
                         
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
          
-        """   
-
             else:
 
                 variable = all_data[0][0]
                 filler = np.full((99,1), np.nan)
                 variable = np.vstack((variable, filler))
                 joint_data = np.concatenate((joint_data,variable), axis = 1)
-        """  
-           
+
 
     #print(all_data[0][0])
 
     pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
     print("The data is successfully saved!")
 
-
+"""
 
 #------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
 
@@ -107,7 +104,7 @@ for index, file in enumerate(mat_files):
 def reload_data(directory_str):
 
     combined_df = pd.DataFrame()
-    csv_files = [f for f in os.listdir(directory_str) if f.endswith("t.csv")]
+    csv_files = [f for f in os.listdir(directory_str) if f.endswith("mat.csv")]
 
     for index, file in enumerate(csv_files):
         
@@ -132,7 +129,7 @@ def reload_data(directory_str):
         scaled_dependent_variables.columns = scaled_dependent_variables.columns.astype(str)
 
         combined_df = pd.concat([combined_df, scaled_dependent_variables], ignore_index=True)
-        combined_df.to_csv("allfiles.csv")
+        #combined_df.to_csv("allfiles.csv")
     
     print("--------------------------------")
     print("The shape of data is: {}".format(combined_df.shape))
@@ -191,27 +188,33 @@ def apply_sk_kmeans(data, max_k):
 def apply_ts_kmeans (data, max_k):
 
     from tslearn.clustering import TimeSeriesKMeans, silhouette_score
-    
+    result = []
+
     data = data.values
     data = data.reshape(data.shape[0]//100, 100, data.shape[1])
 
     for k in range(2,max_k):
-        model = TimeSeriesKMeans(n_clusters=k, metric = "dtw")
+        model = TimeSeriesKMeans(n_clusters=k, metric = "dtw", random_state = 0)
         labels = model.fit_predict(data)
         #silhouette_scores.append(silhouette_score(data, labels, metric = 'dtw'))
+        if k ==2:
+            for i in range(data.shape[0]//2):
+                output = [f'Subject {i+1}', labels[i], labels[i+(data.shape[0]//2)]]
+                result = result + output
 
         plt.figure()
-
         for i in range(k):
             plt.subplot(k, 1, i + 1)
             for j in data[labels == i]:
                 plt.plot(j[:, 0], "k-", alpha=0.2)
             plt.plot(model.cluster_centers_[i][:, 0], "r-")
             plt.title(f'Cluster {i + 1}')
+        
 
+        
     plt.tight_layout()
     plt.show()
-
+    pd.DataFrame(np.reshape(result,(-1,3))).to_csv('outcome.csv')
 
 
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
