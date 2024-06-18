@@ -6,13 +6,11 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
-#from tslearn.clustering import TimeSeriesKMeans, silhouette_score
 
 
 
-"""
+
 #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
 
 # RREAD .mat    FILES IN PYTHON
@@ -38,7 +36,6 @@ def access_struct (data,structs):
     return data
 
 
-"""
 
 """
 
@@ -61,7 +58,6 @@ def access_struct (data,structs):
 """
 
 
-"""
 
 
 
@@ -110,7 +106,7 @@ for index, file in enumerate(mat_files):
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
          
         """   
-"""
+
             else:
 
                 variable = all_data[0][0]
@@ -118,14 +114,13 @@ for index, file in enumerate(mat_files):
                 variable = np.vstack((variable, filler))
                 joint_data = np.concatenate((joint_data,variable), axis = 1)
         """  
-
-"""              
+           
 
     #print(all_data[0][0])
 
     pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
     print("The data is successfully saved!")
-"""
+
 
 
 #------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
@@ -135,7 +130,7 @@ for index, file in enumerate(mat_files):
 def load_data(directory_str):
 
     combined_df = pd.DataFrame()
-    csv_files = [f for f in os.listdir(directory_str) if f.endswith(".csv")]
+    csv_files = [f for f in os.listdir(directory_str) if f.endswith("t.csv")]
 
     for index, file in enumerate(csv_files):
         
@@ -153,13 +148,14 @@ def load_data(directory_str):
             interpolated_dependent_variable[f'{i + 1}'] = interpolation_function(scaled_independent_variable)
         
         # /?/ Decide on the "feature_range" whether the range is suitable for gait analysis or not
-        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        #scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        scaler = preprocessing.StandardScaler()
         scaled_dependent_variables = pd.DataFrame(scaler.fit_transform(interpolated_dependent_variable))
-        scaled_dependent_variables.insert(0, 'Subject ID', index + 1)
+        #scaled_dependent_variables.insert(0, 'Subject ID', index + 1)
         scaled_dependent_variables.columns = scaled_dependent_variables.columns.astype(str)
 
         combined_df = pd.concat([combined_df, scaled_dependent_variables], ignore_index=True)
-        #combined_df.to_csv("allfiles.csv")
+        combined_df.to_csv("allfiles.csv")
     
     print("--------------------------------")
     print("The shape of data is: {}".format(combined_df.shape))
@@ -167,27 +163,21 @@ def load_data(directory_str):
     print("The data is now ready to be analyzed!")
     return combined_df
 
-# ----------------       This applies kmeans to the data      ----------------
-def apply_kmeans(data, max_k):
+# ----------------       This applies SK-learn kmeans to the data      ----------------
+def apply_sk_kmeans(data, max_k):
+    
+    from sklearn.metrics import silhouette_score
     inertia = []
     silhouette_scores = []
 
     for k in range(2, max_k):
-        
+
         model = KMeans(n_clusters=k, init='k-means++', n_init=30, random_state=0)
         model.fit(data)
         labels = model.labels_
         inertia.append(model.inertia_)
         silhouette_scores.append(silhouette_score(data, labels))
-
-        """
-        model = TimeSeriesKMeans(n_clusters=k, metric = "dtw")
-
-        prediction = model.fit_predict(data)
-        labels = model.labels_
-        inertia.append(model.inertia_)
-        silhouette_scores.append(silhouette_score(data, labels, metric = 'dtw'))
-        """
+        
         pca = PCA(n_components=2)
         reduced_data = pca.fit_transform(data)
         # Create a scatter plot of the clustered data
@@ -199,6 +189,7 @@ def apply_kmeans(data, max_k):
         plt.ylabel('PCA Component 2')
         plt.legend()
         plt.show()
+
 
 """
     plt.figure(figsize=(10, 5))
@@ -215,9 +206,37 @@ def apply_kmeans(data, max_k):
     plt.xlabel('Number of clusters')
     plt.ylabel('Silhouette Score')
     plt.show()
-"""    
+"""
+
+
+# ----------------       This applies TS-learn kmeans to the data      ----------------
+
+def apply_ts_kmeans (data, max_k):
+
+    from tslearn.clustering import TimeSeriesKMeans, silhouette_score
     
+    data = data.values
+    data = data.reshape(data.shape[0]//100, 100, data.shape[1])
+
+    for k in range(2,max_k):
+        model = TimeSeriesKMeans(n_clusters=k, metric = "dtw")
+        labels = model.fit_predict(data)
+        #silhouette_scores.append(silhouette_score(data, labels, metric = 'dtw'))
+
+        plt.figure()
+
+        for i in range(k):
+            plt.subplot(k, 1, i + 1)
+            for j in data[labels == i]:
+                plt.plot(j[:, 0], "k-", alpha=0.2)  # Plotting only the first feature for simplicity
+            plt.plot(model.cluster_centers_[i][:, 0], "r-")
+            plt.title(f'Cluster {i + 1}')
+
+            plt.tight_layout()
+            plt.show()
+
+
 
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
 data = load_data(directory_str)
-apply_kmeans(data, 5)
+apply_ts_kmeans(data, 5)
