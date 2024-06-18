@@ -35,38 +35,15 @@ def access_struct (data,structs):
         
     return data
 
-
-
-"""
-
-def access_struct (data,structs):
-    for struct in structs:
-        
-        if isinstance(data,np.ndarray):
-            if data.dtype.names is not None:
-                data = data[struct]
-            else:
-                if data.ndim == 0:
-                    data = data.item()
-                else:
-                    data = data[struct]
-
-        elif isinstance(data,dict):
-            data = data[struct]
-                
-    return data
-"""
-
-
-
-
-
 # MAKE SURE YOU DO NOT SQUEEZE DATA BY  squeeze_me= True. OTHERWISE THE CODE RUNS INTO ERRORS
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
 #data = loadmat(file_path)
 directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
 
-mat_files = [f for f in os.listdir(directory) if (f.endswith("ELokomat.mat") or f.endswith("eLokomat.mat"))]
+
+pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]
+post_files = [f for f in os.listdir(directory) if f.endswith("stLokomat.mat")]
+mat_files = pre_files + post_files
 
 for index, file in enumerate(mat_files):
     file_path = str()
@@ -127,7 +104,7 @@ for index, file in enumerate(mat_files):
 
 
 # ----------------       Reloading data      ----------------
-def load_data(directory_str):
+def reload_data(directory_str):
 
     combined_df = pd.DataFrame()
     csv_files = [f for f in os.listdir(directory_str) if f.endswith("t.csv")]
@@ -228,15 +205,15 @@ def apply_ts_kmeans (data, max_k):
         for i in range(k):
             plt.subplot(k, 1, i + 1)
             for j in data[labels == i]:
-                plt.plot(j[:, 0], "k-", alpha=0.2)  # Plotting only the first feature for simplicity
+                plt.plot(j[:, 0], "k-", alpha=0.2)
             plt.plot(model.cluster_centers_[i][:, 0], "r-")
             plt.title(f'Cluster {i + 1}')
 
-            plt.tight_layout()
-            plt.show()
+    plt.tight_layout()
+    plt.show()
 
 
 
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
-data = load_data(directory_str)
+data = reload_data(directory_str)
 apply_ts_kmeans(data, 5)
