@@ -206,7 +206,7 @@ def apply_ts_kmeans (data, max_k):
         for i in range(k):
             plt.subplot(k, 1, i + 1)
             for j in data[labels == i]:
-                plt.plot(j[:, 0], "k-", alpha=0.2)
+                plt.plot(j[:, 3], "k-", alpha=0.2)
             plt.plot(model.cluster_centers_[i][:, 0], "r-")
             plt.title(f'Cluster {i + 1}')
         
@@ -216,7 +216,7 @@ def apply_ts_kmeans (data, max_k):
     plt.show()
     pd.DataFrame(np.reshape(result,(-1,3))).to_csv('outcome.csv')
 
-
+    
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
 data = reload_data(directory_str)
 apply_ts_kmeans(data, 5)
