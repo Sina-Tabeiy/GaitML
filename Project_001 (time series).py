@@ -42,7 +42,6 @@ directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\Sample"
 # Ensures that first the "pre" is analyzed and then the "post training" data.
 pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]
 post_files = [f for f in os.listdir(directory) if f.endswith("stLokomat.mat")]
-mat_files = pre_files + post_files
 
 # --------------- This part prioritize the order of the files ---------------
 def natural_sort_key(s):
@@ -113,7 +112,7 @@ def reload_data(directory_str):
     combined_df = pd.DataFrame()
     #csv_files = [f for f in os.listdir(directory_str) if f.endswith("mat.csv")]
     file_list = os.listdir(directory_str)
-    csv_files = [f for f in file_list if f.endswith('mat.csv')]
+    file_list = [f for f in file_list if f.endswith('mat.csv')]
     csv_files = sorted(file_list, key=natural_sort_key)
 
     for file_number, file in enumerate(csv_files):
@@ -210,16 +209,15 @@ def apply_ts_kmeans (data, max_k):
             for i in range(data.shape[0]//2):
                 output = [f'Subject {i+1}', labels[i], labels[i+(data.shape[0]//2)]]
                 result = result + output
+                
 
         plt.figure()
         for i in range(k):
             plt.subplot(k, 1, i + 1)
             for j in data[labels == i]:
-                plt.plot(j[:, 3], "k-", alpha=0.2)
+                plt.plot(j[:, 2], "k-", alpha=0.2)
             plt.plot(model.cluster_centers_[i][:, 0], "r-")
             plt.title(f'Cluster {i + 1}')
-        
-
         
     plt.tight_layout()
     plt.show()
