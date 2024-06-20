@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import re
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 from scipy import interpolate
@@ -8,11 +9,8 @@ from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-"""
-
 
 #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
-
 # RREAD .mat    FILES IN PYTHON
 # Identifying the dataset
 def load_data(file_path):
@@ -38,14 +36,24 @@ def access_struct (data,structs):
 # MAKE SURE YOU DO NOT SQUEEZE DATA BY  squeeze_me= True. OTHERWISE THE CODE RUNS INTO ERRORS
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
 #data = loadmat(file_path)
-directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
 
+directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\Sample"
 
+# Ensures that first the "pre" is analyzed and then the "post training" data.
 pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]
 post_files = [f for f in os.listdir(directory) if f.endswith("stLokomat.mat")]
 mat_files = pre_files + post_files
 
-for index, file in enumerate(mat_files):
+# --------------- This part prioritize the order of the files ---------------
+def natural_sort_key(s):
+    return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
+mat_files_pre_sorted = sorted(pre_files, key=natural_sort_key)
+mat_files_post_sorted = sorted(post_files, key=natural_sort_key)
+mat_files_sorted = mat_files_pre_sorted + mat_files_post_sorted
+# ----------------------------------------------------------------------------
+
+
+for file_number, file in enumerate(mat_files_sorted, start = 0):
     file_path = str()
     file_path = os.path.join(directory, file) 
     data = load_data(file_path)
@@ -76,43 +84,44 @@ for index, file in enumerate(mat_files):
                         joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
                         #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
                         #df.append(joint_with_side)
-                        
                         #joint_data.append(joint_kin)
                         #joint_kin = [joint_with_side, joint_with_side, joint_with_side].append(joint_kin)
-                        
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
-         
-            else:
-
-                variable = all_data[0][0]
-                filler = np.full((99,1), np.nan)
-                variable = np.vstack((variable, filler))
-                joint_data = np.concatenate((joint_data,variable), axis = 1)
 
 
-    #print(all_data[0][0])
+            # ------------ This line is only for calculated parameters e.g. cadence ------------
+            # else:
 
-    pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
+            #     variable = all_data[0][0]
+            #     filler = np.full((99,1), np.nan)
+            #     variable = np.vstack((variable, filler))
+            #     joint_data = np.concatenate((joint_data,variable), axis = 1)
+            # ------------------------------------------------------------------------------------
+
+    
+    pd.DataFrame(joint_data).to_csv(r'.\Results\Time ceries clustering_results\Subject%d_Lokomat.csv' % (file_number +1), index = False)
     print("The data is successfully saved!")
 
-"""
 
-#------------------------------------    This Part loads the previously saved data, and runs the algorithm     -----------------------------------
+
+# ---------------------- This Part loads the previously saved data, and runs the algorithm ----------------------
 
 
 # ----------------       Reloading data      ----------------
 def reload_data(directory_str):
 
     combined_df = pd.DataFrame()
-    csv_files = [f for f in os.listdir(directory_str) if f.endswith("mat.csv")]
+    #csv_files = [f for f in os.listdir(directory_str) if f.endswith("mat.csv")]
+    file_list = os.listdir(directory_str)
+    csv_files = [f for f in file_list if f.endswith('mat.csv')]
+    csv_files = sorted(file_list, key=natural_sort_key)
 
-    for index, file in enumerate(csv_files):
+    for file_number, file in enumerate(csv_files):
         
         file_path = os.path.join(directory_str, file)
         csv = pd.read_csv(file_path)
         dependent_variables = csv
         independent_variable = pd.Series(range(len(dependent_variables)))     
-        
         interpolation_function = pd.DataFrame()
         interpolated_dependent_variable = pd.DataFrame()
 
@@ -214,9 +223,9 @@ def apply_ts_kmeans (data, max_k):
         
     plt.tight_layout()
     plt.show()
-    pd.DataFrame(np.reshape(result,(-1,3))).to_csv('outcome.csv')
+    pd.DataFrame(np.reshape(result,(-1,3))).to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\Time ceries clustering_results\outcome.csv')
 
-        # 
-directory_str = r'D:\Sina Tabeiy\Clustering Project'
+
+directory_str = r'D:\Sina Tabeiy\Clustering Project\Results\Time ceries clustering_results'
 data = reload_data(directory_str)
 apply_ts_kmeans(data, 5)
