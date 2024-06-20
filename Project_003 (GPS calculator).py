@@ -168,11 +168,13 @@ for index, file in enumerate(file_list_sorted, start = 0):
 # print(all_GPS)
 # reshaped_array = np.reshape(all_GPS, (22, -1))
 # print(reshaped_array)
-print(len(all_GPS))
+reshaped_array =[]
 for i in range(len(all_GPS)//2):
     output = [all_GPS[i], all_GPS[i+(len(all_GPS)//2)]]
     reshaped_array = reshaped_array + output
-
+print(reshaped_array)
+reshaped_array = np.reshape(reshaped_array,(-1,2))
+print(reshaped_array)
 GPS_output = pd.DataFrame(reshaped_array)
 GPS_output.columns = ['Pre', 'Post']
 GPS_output.to_csv(r'.\Results\GPS_results\GPS_output.csv', index = False)
