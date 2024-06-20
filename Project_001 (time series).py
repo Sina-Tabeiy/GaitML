@@ -216,7 +216,7 @@ def apply_ts_kmeans (data, max_k):
     plt.show()
     pd.DataFrame(np.reshape(result,(-1,3))).to_csv('outcome.csv')
 
-    
+        # 
 directory_str = r'D:\Sina Tabeiy\Clustering Project'
 data = reload_data(directory_str)
 apply_ts_kmeans(data, 5)
