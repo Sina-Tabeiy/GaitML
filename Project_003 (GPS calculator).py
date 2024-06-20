@@ -140,9 +140,11 @@ def reload_data(file_path):
 
 directory_str = r"D:\Sina Tabeiy\Clustering Project\Results\GPS_results"
 
-refrence = [27.46143791, -0.311111111, 8.68496732, 25.92026144, -1.811764706, 4.474509804, 21.30522876, 1.612745098, -4.044771242, 27.46143791, -0.311111111, 8.68496732, 25.92026144, -1.811764706, 4.474509804]
+# an example for reference 
+# refrence = [27.46143791, -0.311111111, 8.68496732, 25.92026144, -1.811764706, 4.474509804, 21.30522876, 1.612745098, -4.044771242, 27.46143791, -0.311111111, 8.68496732, 25.92026144, -1.811764706, 4.474509804]
+reference = pd.read_csv(r'D:\Sina Tabeiy\Clustering Project\TD Data (matfiles)\average.csv')
+reference = list(reference.iloc[:,1])
 all_GPS = []
-
 
 # --------------- This part prioritize the order of the files ---------------
 def natural_sort_key(s):
@@ -158,7 +160,7 @@ for index, file in enumerate(file_list_sorted, start = 0):
     kinematics = reload_data(file_path)
 
     for i in range(15):
-        diffrences = kinematics.iloc[:,i] - refrence[i]
+        diffrences = kinematics.iloc[:,i] - reference[i]
         GVS = np.sqrt(np.mean(diffrences**2))
         all_GVS.append(GVS)
     
@@ -168,15 +170,18 @@ for index, file in enumerate(file_list_sorted, start = 0):
 # print(all_GPS)
 # reshaped_array = np.reshape(all_GPS, (22, -1))
 # print(reshaped_array)
+
 reshaped_array =[]
 for i in range(len(all_GPS)//2):
     output = [all_GPS[i], all_GPS[i+(len(all_GPS)//2)]]
     reshaped_array = reshaped_array + output
-print(reshaped_array)
+
 reshaped_array = np.reshape(reshaped_array,(-1,2))
-print(reshaped_array)
+
 GPS_output = pd.DataFrame(reshaped_array)
 GPS_output.columns = ['Pre', 'Post']
 GPS_output.to_csv(r'.\Results\GPS_results\GPS_output.csv', index = False)
 print("--------------------------------")
 print("Analysis Done!")
+
+
