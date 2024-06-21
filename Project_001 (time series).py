@@ -37,7 +37,7 @@ def access_struct (data,structs):
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
 #data = loadmat(file_path)
 
-directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\Sample"
+directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
 
 # Ensures that first the "pre" is analyzed and then the "post training" data.
 pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]
@@ -70,26 +70,25 @@ for file_number, file in enumerate(mat_files_sorted, start = 0):
             
             if measurement == 'angAtFullCycle':
 
-                joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
-                #kin_items = ['Hip']
+                #joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+                joint_names = ['Hip','Knee', 'Ankle']
                 sides = side_struct[0]
 
                 for joint in (joint_names):
                     for side in sides:
-
+                        
                         joint_with_side = side + joint
-                        joint_kin = all_data[0,0][joint_with_side][0][0]
-                        #list_joint_kin = joint_kin.flatten(order = "F")
-                        joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
-                        #joint_kin1 = [item for sublist in list_joint_kin for item in sublist]
-                        #df.append(joint_with_side)
-                        #joint_data.append(joint_kin)
-                        #joint_kin = [joint_with_side, joint_with_side, joint_with_side].append(joint_kin)
+                        # \\\\\\\\\\\ This one was changed to have the analysis based on the result of flx/ext ///////////
+                        # \\\\\\ joint_kin = all_data[0,0][joint_with_side][0][0] //////
+                        # \\\\\\ joint_kin = np.reshape(joint_kin, (100,1), order = 'F') //////
+                        joint_kin = all_data[0,0][joint_with_side][0][0][:,0]
+                        joint_kin = np.reshape(joint_kin, (100,1), order = 'F')
+
                         joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
 
 
             # ------------ This line is only for calculated parameters e.g. cadence ------------
-            # else:
+            # else: 
 
             #     variable = all_data[0][0]
             #     filler = np.full((99,1), np.nan)
@@ -215,7 +214,7 @@ def apply_ts_kmeans (data, max_k):
         for i in range(k):
             plt.subplot(k, 1, i + 1)
             for j in data[labels == i]:
-                plt.plot(j[:, 2], "k-", alpha=0.2)
+                plt.plot(j[:, 0], "k-", alpha=0.2)
             plt.plot(model.cluster_centers_[i][:, 0], "r-")
             plt.title(f'Cluster {i + 1}')
         

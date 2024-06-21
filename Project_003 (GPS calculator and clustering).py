@@ -210,7 +210,7 @@ def apply_sk_kmeans(data, max_k):
 
             result = pd.DataFrame(np.reshape(result,(-1,3)))
             result.columns = ['Sub No.', 'Pre', 'Post']
-            result.to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\Time ceries clustering_results\GPS_Clustering.csv', index = False)
+            result.to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\GPS_results\GPS_Clustering.csv', index = False)
 
     # plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
     # plt.title('Elbow Method')
