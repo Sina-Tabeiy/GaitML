@@ -6,6 +6,8 @@ import re
 from sklearn.preprocessing import StandardScaler
 from scipy.io import loadmat
 from scipy import interpolate
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
 
 # #------------------------------------    This Part loads the data, extract the features and save them in an excel file     -----------------------------------
 # # RREAD .mat    FILES IN PYTHON
@@ -89,7 +91,7 @@ from scipy import interpolate
 #             elif joint == 'FootProgress':
 #                 for side in sides:
 #                     joint_with_side = side + joint
-#                     joint_kin = all_data[0,0][joint_with_side][0][0][:,0]
+#                     joint_kin = all_data[0,0][joint_with_side][0][0][:,2]
 #                     joint_kin = np.reshape(joint_kin, (100,1), order = 'F')
 #                     joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
             
@@ -131,11 +133,6 @@ def reload_data(file_path):
         interpolation_function = interpolate.interp1d(independent_variable, dependent_variables.iloc[:, i], kind='cubic')
         interpolated_dependent_variable[f'{i + 1}'] = interpolation_function(scaled_independent_variable)
     
-    print("--------------------------------")
-    print("The shape of data is: {}".format(interpolated_dependent_variable.shape))
-    print("--------------------------------")
-    print("The data is now ready to be analyzed!")
-    
     return interpolated_dependent_variable
 
 directory_str = r"D:\Sina Tabeiy\Clustering Project\Results\GPS_results"
@@ -154,6 +151,8 @@ file_list = [f for f in file_list if f.endswith('mat.csv')]
 file_list_sorted = sorted(file_list, key=natural_sort_key)
 # ----------------------------------------------------------------------------
 
+print("--------------------------------")
+print("Data Loaded! Waiting for analysis")
 for index, file in enumerate(file_list_sorted, start = 0):
     all_GVS = []
     file_path = os.path.join(directory_str, file)
@@ -166,6 +165,7 @@ for index, file in enumerate(file_list_sorted, start = 0):
     
     GPS = np.mean(all_GVS)
     all_GPS.append(GPS)
+
 
 # print(all_GPS)
 # reshaped_array = np.reshape(all_GPS, (22, -1))
@@ -185,3 +185,49 @@ print("--------------------------------")
 print("Analysis Done!")
 
 
+# ----------------       Apply SK-learn kmeans to the data      ----------------
+def apply_sk_kmeans(data, max_k):
+    
+    inertia = []
+    silhouette_scores = []
+    result = []
+    scaler = StandardScaler()
+    normalized_data = scaler.fit_transform(data)
+
+    for k in range(2, max_k):
+        model = KMeans(n_clusters=k, init='k-means++', n_init=30, random_state=0)
+        model.fit(normalized_data)
+        cluster_labels = model.fit_predict(normalized_data)
+        
+        #labels = model.labels_
+        inertia.append(model.inertia_)
+        silhouette_scores.append(silhouette_score(normalized_data, cluster_labels))
+        
+        if k ==2:
+            for i in range(data.shape[0]//2):
+                output = [f'Subject {i+1}', cluster_labels[i], cluster_labels[i+(data.shape[0]//2)]]
+                result = result + output
+
+            result = pd.DataFrame(np.reshape(result,(-1,3)))
+            result.columns = ['Sub No.', 'Pre', 'Post']
+            result.to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\Time ceries clustering_results\GPS_Clustering.csv', index = False)
+
+    # plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
+    # plt.title('Elbow Method')
+    # plt.xlabel('Number of clusters')
+    # plt.ylabel('Inertia')
+    # plt.show()
+
+    # # Plotting the Silhouette Scores
+    # #plt.figure(figsize=(10, 5))
+    # plt.plot(range(2, max_k), silhouette_scores, marker='o', linestyle='--')
+    # plt.title('Silhouette Scores for Different k')
+    # plt.xlabel('Number of clusters')
+    # plt.ylabel('Silhouette Score')
+    # plt.show()
+
+    
+# file = r'D:\Sina Tabeiy\Clustering Project\Results\GPS_results\GPS_output.csv'
+# data = pd.read_csv(file)
+data = np.array(all_GPS).reshape(-1,1)
+apply_sk_kmeans(data, 5)

@@ -86,7 +86,7 @@ for file_num, file in enumerate(CTL_files_sorted):
             elif joint == 'FootProgress':
                 for side in sides:
                     joint_with_side = side + joint
-                    joint_kin = all_data[0,0][joint_with_side][0][0][:,0]
+                    joint_kin = all_data[0,0][joint_with_side][0][0][:,2]
                     joint_kin = np.reshape(joint_kin, (100,1), order = 'F')
                     joint_data = np.concatenate((joint_data, joint_kin), axis = 1)
             
@@ -102,7 +102,7 @@ for file_num, file in enumerate(CTL_files_sorted):
                             'R_Ankle dorsi/plantar flx', 'R_foot progression', 'L_Pelvis', 'L_Pelvis', 'L_Pelvis', 'L_Hip flex/ext',
                             'L_Hip abd/add', 'L_Hip int/ext rotation', 'L_Knee flx/ext', 'L_Ankle dorsi/plantar flx', 'L_foot progression']
     
-    joint_data.to_csv(r'D:\Sina Tabeiy\Clustering Project\TD Data (matfiles)\CSV\Subject%d_Lokomat.csv' %(file_num+1), index = False)
+    joint_data.to_csv(r'D:\Sina Tabeiy\Clustering Project\TD Data (matfiles)\CSV\TD_Subject%d.csv' %(file_num+1), index = False)
 
     # if file_num < ((len(list(enumerate(mat_files)))+1)//2):
     #     joint_data.to_csv(r'.\Results\GPS_results\Subject%d_PreLokomat.csv' %(file_num+1), index = False)
