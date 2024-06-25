@@ -37,7 +37,7 @@ def access_struct (data,structs):
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
 #data = loadmat(file_path)
 
-directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
+directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\New sample"
 
 # Ensures that first the "pre" is analyzed and then the "post training" data.
 pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]

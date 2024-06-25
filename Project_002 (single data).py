@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 import os
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
@@ -36,15 +37,26 @@ def access_struct (data,structs):
 # MAKE SURE YOU DO NOT SQUEEZE DATA BY  squeeze_me= True. OTHERWISE THE CODE RUNS INTO ERRORS
 #file_path = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\patient1_PostLokomat.mat"
 #data = loadmat(file_path)
-directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)"
+directory = r"D:\Sina Tabeiy\Clustering Project\Lokomat Data (matfiles)\New sample"
 
-mat_files = [f for f in os.listdir(directory) if (f.endswith("ELokomat.mat") or f.endswith("eLokomat.mat"))]
+# Ensures that first the "pre" is analyzed and then the "post training" data.
+pre_files = [f for f in os.listdir(directory) if f.endswith("eLokomat.mat")]
+post_files = [f for f in os.listdir(directory) if f.endswith("stLokomat.mat")]
 
-for index, file in enumerate(mat_files):
+# --------------- This part prioritize the order of the files ---------------
+def natural_sort_key(s):
+    return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
+mat_files_pre_sorted = sorted(pre_files, key=natural_sort_key)
+mat_files_post_sorted = sorted(post_files, key=natural_sort_key)
+mat_files = mat_files_pre_sorted + mat_files_post_sorted
+# ----------------------------------------------------------------------------
+
+
+for file_number, file in enumerate(mat_files):
     file_path = str()
     file_path = os.path.join(directory, file) 
     data = load_data(file_path)
-
+    col_name =[]
     side_structs = ['Right', 'Left']
     measurements = ['pctToeOff', 'pctToeOffOppose', 'pctContactTalOppose', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee', 'vitFoulee', 'vitCadencePasParMinute' ]
     joint_data = pd.DataFrame()
@@ -58,9 +70,11 @@ for index, file in enumerate(mat_files):
             variable = all_data[0]
             #joint_data.append(variable)  # Initialize joint_data with the first variable
             joint_data = pd.concat([joint_data, pd.Series(variable, name=f"{side_struct}_{measurement}")], axis = 1)
-            
-
-    pd.DataFrame(joint_data).to_csv('Subject%d_PreLokomat.csv' %index, index = False)
+            col_name.append(side_struct + '_' + measurement)
+        
+    joint_data = pd.DataFrame(joint_data)
+    joint_data.columns = col_name
+    joint_data.to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\Spatiotemporal clustering_results\Subject%d_SpatiotemporalParams.csv' %(file_number+1), index = False)
     print("The data is successfully saved!")
 
 
@@ -71,7 +85,7 @@ for index, file in enumerate(mat_files):
 def load_data(directory_str):
 
     combined_df = pd.DataFrame()
-    csv_files = [f for f in os.listdir(directory_str) if f.endswith("t.csv")]
+    csv_files = [f for f in os.listdir(directory_str) if f.endswith("Params.csv")]
 
     for index, file in enumerate(csv_files):
         
@@ -79,7 +93,7 @@ def load_data(directory_str):
         dependent_variables = pd.read_csv(file_path)    
         combined_df = pd.concat([combined_df, dependent_variables], ignore_index=True)
 
-    combined_df.to_csv("allfiles.csv")
+    combined_df.to_csv(r"D:\Sina Tabeiy\Clustering Project\Results\Spatiotemporal clustering_results\alldata.csv")
 
     print("--------------------------------")
     print("The shape of data is: {}".format(combined_df.shape))
@@ -93,6 +107,7 @@ def apply_sk_kmeans(data, max_k):
     from sklearn.metrics import silhouette_score
     inertia = []
     silhouette_scores = []
+    result = []
 
     scaler = preprocessing.StandardScaler()
     normalized_data = scaler.fit_transform(data)
@@ -108,6 +123,14 @@ def apply_sk_kmeans(data, max_k):
         inertia.append(model.inertia_)
         silhouette_scores.append(silhouette_score(normalized_data, cluster_labels))
         
+        if k ==2:
+            for i in range(data.shape[0]//2):
+                output = [f'Subject {i+1}', cluster_labels[i], cluster_labels[i+(data.shape[0]//2)]]
+                result = result + output
+
+            result = pd.DataFrame(np.reshape(result,(-1,3)))
+            result.columns = ['Sub No.', 'Pre', 'Post']
+            result.to_csv(r'D:\Sina Tabeiy\Clustering Project\Results\Spatiotemporal clustering_results\SpatioTemporal_Clustering.csv', index = False)
 
         # ------------------------ Visualisation ---------------------------
         pca = PCA(n_components=2)
@@ -125,21 +148,21 @@ def apply_sk_kmeans(data, max_k):
         plt.show()
 
 
-    plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
-    plt.title('Elbow Method')
-    plt.xlabel('Number of clusters')
-    plt.ylabel('Inertia')
-    plt.show()
+    # plt.plot(range(2, max_k), inertia, marker='o', linestyle='--')
+    # plt.title('Elbow Method')
+    # plt.xlabel('Number of clusters')
+    # plt.ylabel('Inertia')
+    # plt.show()
 
-    # Plotting the Silhouette Scores
-    #plt.figure(figsize=(10, 5))
-    plt.plot(range(2, max_k), silhouette_scores, marker='o', linestyle='--')
-    plt.title('Silhouette Scores for Different k')
-    plt.xlabel('Number of clusters')
-    plt.ylabel('Silhouette Score')
-    plt.show()
+    # # Plotting the Silhouette Scores
+    # #plt.figure(figsize=(10, 5))
+    # plt.plot(range(2, max_k), silhouette_scores, marker='o', linestyle='--')
+    # plt.title('Silhouette Scores for Different k')
+    # plt.xlabel('Number of clusters')
+    # plt.ylabel('Silhouette Score')
+    # plt.show()
 
 
-directory_str = r'D:\Sina Tabeiy\Clustering Project'
+directory_str = r'D:\Sina Tabeiy\Clustering Project\Results\Spatiotemporal clustering_results'
 data = load_data(directory_str)
-apply_sk_kmeans(data, 5)
+apply_sk_kmeans(data, 3)
