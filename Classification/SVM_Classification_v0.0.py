@@ -1,4 +1,3 @@
-
 # --------------- INTRO ---------------
 
 # This version is the main version to modify and find the best solution for the type of study that we have.
@@ -48,37 +47,19 @@ labels = np.where(diffrence < significance_value, 1, 0).flatten()
 labeled_data = np.concatenate((all_data, labels), axis = 1)
 pd.DataFrame(labeled_data).to_csv(output_dir + r'\labeled_data.csv', header = False, index = False)
 """
-# ----------
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 start_time = time.time()
 # ----- Train/Test Data split -----
-
-
+x_train, x_test, y_train, y_test = train_test_split(all_data, labels, test_size = 0.3, random_state = 0)
 
 # ----- Scale the x data -----
-normalizer = MinMaxScaler()
-all_data = normalizer.fit_transform(all_data)
 scaler = StandardScaler()
-all_data = scaler.fit_transform(all_data)
-
+x_train = scaler.fit_transform(x_train)
+x_test = scaler.transform(x_test)
 print('Skewness:',skew(all_data))
 print('Kurtosis:', kurtosis(all_data))
 
-x_train, x_test, y_train, y_test = train_test_split(all_data, labels, test_size = 0.3, random_state = 0)
-
-"""
-# ----- Create model (RBF only) -----
-SVM = svm.SVC(kernel = 'rbf')
-SVM.fit(x_train, y_train)
-
-# ----- Test model -----
-y_hat = SVM.predict(x_test)
-acc = metrics.accuracy_score(y_test, y_hat)
-print('************************************')
-print("The accuracy of the model is: %.3f %%" %(acc*100))
-print('************************************')
-"""
 
 # ----- Evaluate all types -----
 print('************************************')

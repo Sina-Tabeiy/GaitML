@@ -1,8 +1,7 @@
 
 # --------------- INTRO ---------------
 
-# This version is working based on v0. The modifications involve
-# using joblib to process parallel computation.
+# This version is working based on v0. The modifications involve:
 # - using joblib to process parallel computation.
 
 # ------------------------------
