@@ -47,7 +47,7 @@ start_time = time.time()
 x_train, x_test, y_train, y_test = train_test_split(all_data, labels, test_size = 0.3, random_state = 0)
 scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
-x_test = scaler.fit_transform(x_test)
+x_test = scaler.transform(x_test)
 
 # ----- Evaluate all types -----
 print('************************************')
