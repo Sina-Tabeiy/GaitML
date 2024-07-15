@@ -11,7 +11,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split, GridSearchCV, KFold
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
@@ -50,7 +50,7 @@ demo_val = demo_var.values
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results\GPS_output_xp5.csv')
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results\GPS_output.csv')
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 # ACTION REQUIRED: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
@@ -97,6 +97,7 @@ print(metrics.classification_report(y_test, grid_search.best_estimator_.predict(
 
 # ----- Calculate parameters weight fi=or non-linear model -----
 fw = permutation_importance(grid_search.best_estimator_, x_test, y_test, n_repeats = 20, n_jobs=-1, random_state = 0)
+
 for i in range(len(fw.importances_mean)):
         print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
 
