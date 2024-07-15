@@ -5,7 +5,7 @@ import re
 from scipy.io import loadmat
 
 
-# RREAD .mat    FILES IN PYTHON
+# RREAD .mat  FILES IN PYTHON
 def load_data(file):
 
     data = loadmat(file)
@@ -15,7 +15,7 @@ def load_data(file):
     return data
 
 
-# Organize mat files in the order of PreLokomat and then PostLokomat
+# Organize mat files in the order of PreLokomat and then PostLokomat.
 def natural_sort_key(s):
         return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
 
@@ -43,6 +43,8 @@ def access_struct (data,structs):
 # Example: 
         # measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose']
         #joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+
+"""
 def feature_extractor (directory, measurements, output_dir, *joint_names):
     
     combined_data = []
@@ -190,9 +192,114 @@ def feature_extractor (directory, measurements, output_dir, separate_legs, *join
     all_files = pd.DataFrame(combined_data)
     all_files.to_csv(output_dir + r'\all_files.csv', header = False, index = False)
     return combined_data
+"""
+def mean_feature_extractor (directory, measurements, output_dir, separate_legs, joint_names):
+    count = 0
+    combined_data = []
+    data_names = organized(directory)
 
-# feature_extractor('D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample', 
-#                   measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose'], 
-#                   joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis'],
-#                   output_dir = 'D:\Sina Tabeiy\Project\Classification'
-# 
+    for file_number, file in enumerate(data_names, start = 0):
+        file_path = str()
+        file_path = os.path.join(directory, file)
+        data = load_data(file_path)
+        side_structs = ['Right', 'Left']
+
+# -------- Calculate while the info should be extracted separately --------
+        if separate_legs == True:
+            
+            for side_struct in side_structs:
+                joint_data = []
+                header = []
+                count += 1
+
+                for measurement in measurements:
+                    structs = ['c', 'results', side_struct, measurement]
+                    all_data = access_struct(data,structs)
+
+                    if 'angAtFullCycle' in measurements: 
+                        if measurement == 'angAtFullCycle':
+
+                            sides = side_struct[0]
+                            for joint in (joint_names):
+                                for side in sides:
+                                    joint_with_side = side + joint
+                                    header.append(joint_with_side)
+                                    joint_kin = all_data[0,0][joint_with_side][0][0]
+                                    joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
+                                    joint_kin = np.mean(joint_kin, axis = 0)
+                                    joint_data.append(joint_kin)
+
+                        else: 
+                            header.append(measurement)
+                            variable = np.asanyarray([all_data[0][0]])                            
+                            joint_data.append(variable)
+                            
+                    else:
+                        header.append(measurement)
+                        variable = np.asanyarray([all_data[0][0]])
+                        joint_data.append(variable)
+
+                joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
+                joint_data = joint_data.reshape(1,-1)
+                combined_data.append(joint_data)
+                joint_data_side = pd.DataFrame(joint_data)
+                joint_data_side.to_csv(output_dir + '\Subject%d_%s_Lokomat.csv' % ((file_number +1), side_struct[0]), header = False, index = False)
+        
+            print("The data for the Subject %d is extracted, separated legs." %(file_number+1))
+
+# -------- Calculate while the info should be extracted together --------
+        else:
+            joint_data = []
+            header = []
+            count += 1
+            for side_struct in side_structs:
+                
+                for measurement in measurements:
+                    
+                    structs = ['c', 'results', side_struct, measurement]
+                    all_data = access_struct(data,structs)
+
+                    if 'angAtFullCycle' in measurements:
+
+                        if measurement == 'angAtFullCycle':
+
+                            sides = side_struct[0]
+                            for joint in (joint_names):
+                                for side in sides:
+                                    joint_with_side = side + joint
+                                    header.append(joint_with_side)
+                                    joint_kin = all_data[0,0][joint_with_side][0][0]
+                                    joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
+                                    joint_kin = np.mean(joint_kin, axis = 0)
+                                    joint_data.append(joint_kin)
+
+                        else: 
+                            header.append(measurement)
+                            variable = np.asanyarray([all_data[0][0]])
+                            joint_data.append(variable)
+                    
+                    else:
+                        header.append(measurement)
+                        variable = np.asanyarray([all_data[0][0]])
+                        joint_data.append(variable)
+            
+
+            joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
+            joint_data = joint_data.reshape(1,-1)
+            combined_data.append(joint_data)
+            joint_data_side = pd.DataFrame(joint_data)
+            joint_data_side.to_csv(output_dir + '\Subject%d_Lokomat.csv' %(file_number +1), header = False, index = False)
+            print("The data for the Subject %d is extracted, both legs together." %(file_number+1))
+
+    combined_data = np.concatenate(combined_data) # Flatten the joint_data to get it ready for reshapeing.
+    combined_data = combined_data.reshape(count,-1)
+    print(header)
+    all_files = pd.DataFrame(combined_data)
+    all_files.to_csv(output_dir + r'\all_files.csv', header = False, index = False)
+    return combined_data
+
+# mean_feature_extractor(directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample', 
+#                   measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose'],
+#                   separate_legs = False,
+#                   output_dir = 'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample',
+#                   joint_names = ['Hip', 'Knee', 'Ankle'])
