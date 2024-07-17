@@ -61,12 +61,14 @@ demo_val = np.repeat(demo_val, 2, axis = 0)
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results\GPS_output.csv')
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\new_gps\GPS_output.csv', index_col=False)
+gps.drop(columns=['Unnamed: 0'], inplace=True)
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 
-# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
-labels = np.repeat(labels, 2)
+# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False with the file which consider legs togeather
+# DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
+# labels = np.repeat(labels, 2)
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 start_time = time.time()
@@ -96,7 +98,7 @@ print('************************************')
 print('Bayesian Optimization initiated.')
 
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
-kernel_names = ['sigmoid']
+kernel_names = ['linear']
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
             'C': (1,1000),
