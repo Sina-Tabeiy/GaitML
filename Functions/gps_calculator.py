@@ -200,7 +200,15 @@ all_GPS = all_GPS.flatten()
 reshaped_all_GPS = all_GPS.reshape((-1,2), order='F')
 GPS_output = pd.DataFrame(reshaped_all_GPS)
 GPS_output.columns = ['Pre', 'Post']
-GPS_output.to_csv(r'D:\Sina Tabeiy\Project\Results\new_gps\GPS_output.csv', index = False)
+
+
+# ----- CAUTION::: ACTIVATE THE FOLLOWING LINES WHEN 
+#                  SEPARATE_LEGS = True,
+#                  OTHERWISE, IGNORE IT.
+row_names = ['Right', 'Left']
+row_names = np.tile(row_names, len(reshaped_all_GPS)//2)
+GPS_output.index = row_names
+GPS_output.to_csv(r'D:\Sina Tabeiy\Project\Results\new_gps\GPS_output.csv')
 
 print("----------------------------------")
 print("ANALYSIS DONE!")
