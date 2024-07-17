@@ -20,6 +20,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 import os
 import sys
@@ -114,10 +115,18 @@ print("The best parameters are: ", optimizer.max)
 print(kernel_names[int(best_parameters['kernel_index'])], best_parameters['C'], best_parameters['gamma'])
 SVM_best = svm.SVC(kernel=kernel_names[int(best_parameters['kernel_index'])], C=best_parameters['C'], gamma=best_parameters['gamma'], random_state=0)
 SVM_best.fit(x_train, y_train)
+y_hat = SVM_best.predict(x_test)
 print("Test set score: ", SVM_best.score(x_test, y_test))
-print(metrics.classification_report(y_test, SVM_best.predict(x_test)))
+print(metrics.classification_report(y_test, y_hat))
 
-# # ----- Calculate parameters weight for the best non-linear model -----
+# ----- Condusion Matrix -----
+labels = ['Non-responder', 'Responder']
+confustion_mat = confusion_matrix(y_true=y_test, y_pred=y_hat)
+disp = ConfusionMatrixDisplay(confustion_mat,display_labels=labels)
+disp.plot()
+plt.show()
+
+# ----- Calculate parameters weight for the best non-linear model -----
 fw = permutation_importance(SVM_best, x_test, y_test, n_repeats = 20, n_jobs=-1, random_state = 0)
 for i in range(len(fw.importances_mean)):
         print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
