@@ -40,7 +40,7 @@ all_data = featurextractor.feature_extractor(file_directory, measurements, outpu
 
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results\GPS_output.csv')
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_all\GPS_output.csv')
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 # ACTION REQUIRED: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
@@ -86,14 +86,15 @@ print('********** Best estimator ********** ')
 print("The best estimator is:", grid_search.best_estimator_)
 print("Test set score: ", grid_search.score(x_test, y_test))
 #print(grid_search.best_score_)
-print(metrics.classification_report(y_test, grid_search.best_estimator_(x_test)))
+print(metrics.classification_report(y_test, grid_search.predict(x_test)))
 
 # ----- Calculate parameters weight fi=or non-linear model -----
 fw = permutation_importance(grid_search.best_estimator_, x_test, y_test, n_repeats = 20, n_jobs=-1, random_state = 0)
 for i in range(len(fw.importances_mean)):
         print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
-
-plt.barh(measurements, fw.importances_mean)
+sides = ['Right', 'Left']
+measurements_label = [side + m for side in sides for m in measurements]
+plt.barh(measurements_label, fw.importances_mean)
 plt.xlabel("Permutation Importance")
 plt.show()
 

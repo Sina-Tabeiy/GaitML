@@ -6,10 +6,10 @@
 # - Adding Permutation Importance to the best estimator of the GridSearchCV.
 # - Adding coefficient matrix to get the feature importance for the linear model.
 # - Adding Beysian optimization instead of the GridSearchCV.
+# - Adding mean value of kinematics.
 
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
-# Maximum acc of 91% is achieved in kernel = POLY.
 # ------------------------------
 
 import numpy as np
@@ -20,11 +20,10 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
-
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import os
 import sys
 import time
-
 import sklearn.svm
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurextractor
@@ -35,8 +34,9 @@ import featurextractor
 # ----- Define variables -----
 file_directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Pre Data'
 # measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
-measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
-#joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+measurements = ['angAtFullCycle','pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
+# joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+joint_name = ['Hip', 'Knee', 'Ankle']
 side = ['Right', 'Left']
 output_dir = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\CSV Output'
 significance_value = -1
@@ -44,7 +44,7 @@ significance_value = -1
 # ----- Extract variables from .mat files -----
 # The output data will be in the order of all pre intervention files and then all post intervention files. 
 # Since the folder only contains Pre data so we are gonna have the pre data only. 
-all_data = featurextractor.feature_extractor(file_directory, measurements, output_dir, separate_legs = True)
+all_data = featurextractor.mean_feature_extractor(file_directory, measurements, output_dir, separate_legs = True, joint_names = joint_name)
 if isinstance(all_data, pd.DataFrame):
     all_data = all_data.values
 
@@ -59,12 +59,14 @@ demo_val = np.repeat(demo_val, 2, axis = 0)
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_all\GPS_output.csv')
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
+gps.drop(columns=['Unnamed: 0'], inplace=True)
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 
-# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
-labels = np.repeat(labels, 2)
+# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False with the file which consider legs togeather
+# DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
+# labels = np.repeat(labels, 2)
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 start_time = time.time()
@@ -113,16 +115,28 @@ print("The best parameters are: ", optimizer.max)
 print(kernel_names[int(best_parameters['kernel_index'])], best_parameters['C'], best_parameters['gamma'])
 SVM_best = svm.SVC(kernel=kernel_names[int(best_parameters['kernel_index'])], C=best_parameters['C'], gamma=best_parameters['gamma'], random_state=0)
 SVM_best.fit(x_train, y_train)
+y_hat = SVM_best.predict(x_test)
 print("Test set score: ", SVM_best.score(x_test, y_test))
-print(metrics.classification_report(y_test, SVM_best.predict(x_test)))
+print(metrics.classification_report(y_test, y_hat))
 
-# # ----- Calculate parameters weight for the best non-linear model -----
+# ----- Condusion Matrix -----
+labels = ['Non-responder', 'Responder']
+confustion_mat = confusion_matrix(y_true=y_test, y_pred=y_hat)
+disp = ConfusionMatrixDisplay(confustion_mat,display_labels=labels)
+disp.plot()
+plt.show()
+
+# ----- Calculate parameters weight for the best non-linear model -----
 fw = permutation_importance(SVM_best, x_test, y_test, n_repeats = 20, n_jobs=-1, random_state = 0)
 for i in range(len(fw.importances_mean)):
         print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
 
+# ----- If separate_legs = False -----
 # feature = [s[0] + m for s in side for m in measurements]
-feature = [m for m in measurements]
+
+# ----- If separate_legs = True -----
+feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]]
+# feature = [m for m in measurements]
 feature = feature + list(demo_var.columns)
 plt.barh(feature, fw.importances_mean)
 plt.xlabel("Permutation Importance")

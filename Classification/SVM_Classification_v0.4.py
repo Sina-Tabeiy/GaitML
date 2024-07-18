@@ -50,7 +50,7 @@ demo_val = demo_var.values
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results\GPS_output.csv')
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_all\GPS_output.csv')
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 # ACTION REQUIRED: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
@@ -84,7 +84,7 @@ parameter_grid = {
 }
 
 # kfold = KFold(n_splits = 5, shuffle = True, random_state = 0)
-grid_search = GridSearchCV(SVM, parameter_grid, n_jobs = -1, refit = True, verbose = 3)
+grid_search = GridSearchCV(SVM, parameter_grid, n_jobs = -1, refit = True, verbose = 3, cv = 10)
 grid_search.fit(x_train, y_train)
 
 print('********** Best parameters ********** ')

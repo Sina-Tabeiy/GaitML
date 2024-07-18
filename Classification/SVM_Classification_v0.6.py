@@ -21,11 +21,9 @@ from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
 import os
 import sys
 import time
-
 import sklearn.svm
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurextractor
@@ -61,7 +59,7 @@ demo_val = np.repeat(demo_val, 2, axis = 0)
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
 # ----- Load the final result and label the data -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\new_gps\GPS_output.csv', index_col=False)
+gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
 gps.drop(columns=['Unnamed: 0'], inplace=True)
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
@@ -98,7 +96,7 @@ print('************************************')
 print('Bayesian Optimization initiated.')
 
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
-kernel_names = ['linear']
+kernel_names = ['poly']
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
             'C': (1,1000),
@@ -110,7 +108,7 @@ pbounds = {
 optimizer = BayesianOptimization( f = svm_model, pbounds = pbounds, random_state=0, verbose=3)
 optimizer.maximize(init_points=5, n_iter=50)
 best_parameters = optimizer.max['params']
-best_parameters['C'] = float(best_parameters['C'])
+
 
 print("********** Best parameters ********** ")
 print("The best parameters are: ", optimizer.max)
@@ -133,8 +131,9 @@ fw = permutation_importance(SVM_best, x_test, y_test, n_repeats = 20, n_jobs=-1,
 for i in range(len(fw.importances_mean)):
         print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
 
-# feature = [s[0] + m for s in side for m in measurements]
-feature = [m for m in measurements]
+
+# feature = [s[0] + m for s in side for m in measurements] # ----- If separate_legs = False -----
+feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]] # ----- If separate_legs = True -----
 feature = feature + list(demo_var.columns)
 plt.barh(feature, fw.importances_mean)
 plt.xlabel("Permutation Importance")
