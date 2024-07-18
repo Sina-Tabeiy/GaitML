@@ -100,7 +100,7 @@ def feature_extractor (directory, measurements, output_dir, *joint_names):
 
 # This function output the specified measurements for each side the diffrence
 # with the function <<feature_extractor>> is that this function calculates the output separately.
-
+"""
 def feature_extractor (directory, measurements, output_dir, separate_legs, *joint_names):
     
     combined_data = []
@@ -192,7 +192,7 @@ def feature_extractor (directory, measurements, output_dir, separate_legs, *join
     all_files = pd.DataFrame(combined_data)
     all_files.to_csv(output_dir + r'\all_files.csv', header = False, index = False)
     return combined_data
-"""
+
 def mean_feature_extractor (directory, measurements, output_dir, separate_legs, joint_names):
     count = 0
     combined_data = []
