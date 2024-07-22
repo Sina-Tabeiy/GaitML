@@ -15,8 +15,6 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
-
-import os
 import sys
 import time
 sys.path.append('D:\Sina Tabeiy\Project\Functions')

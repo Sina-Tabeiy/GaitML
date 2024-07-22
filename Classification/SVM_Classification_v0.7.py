@@ -1,17 +1,14 @@
 # --------------- INTRO ---------------
-
-# This version is working based on v0.0, The modifications involve:
-# - Adding gridsearch to tune hyperparameters.
-# - Adding StandardScaler and MinMaxScaler (Normalizer).
-# - Adding Permutation Importance to the best estimator of the GridSearchCV.
-# - Adding coefficient matrix to get the feature importance for the linear model.
-# - Adding Beysian optimization instead of the GridSearchCV.
 # - Adding mean value of kinematics.
+# - Adding StandardScaler and MinMaxScaler (Normalizer).
+# - Adding Bayesian Optimization to tune the hyperparameters.
+# - Adding coefficient matrix to get the feature importance for the linear model.
+# - Adding Permutation importance.
+
 
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
 # ------------------------------
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,10 +18,9 @@ from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import os
+from scipy.stats import skewtest, kurtosistest
 import sys
 import time
-import sklearn.svm
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurextractor
 
@@ -58,6 +54,14 @@ demo_val = np.repeat(demo_val, 2, axis = 0)
 
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
+sktst = skewtest(all_data) #short form of skewtest
+print("Skewness values:\n", sktst.statistic)
+print("Skewness test p-values:\n ", sktst.pvalue)
+kurtst = kurtosistest(all_data) #short form of kurtosis test
+print("Kurtosis values:\n", kurtst.statistic)
+print("Kurtosis test p-values:\n", kurtst.pvalue)
+
+
 # ----- Load the final result and label the data -----
 gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
 gps.drop(columns=['Unnamed: 0'], inplace=True)
@@ -80,6 +84,7 @@ scaler = StandardScaler()
 
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
+
 
 # ----- Bayesian Optimization -----
 
@@ -143,14 +148,14 @@ plt.xlabel("Permutation Importance")
 plt.show()
 
 
-# # ----- Calculate patameters weight for linear model -----
-# linear_svm = svm.SVC(kernel = 'linear', random_state = 0)
-# clf = linear_svm.fit(x_train, y_train)
-# print('Weight of the Linear model: ', clf.coef_)
-# plt.barh(feature, abs(clf.coef_[0]))
-# plt.xlabel("Feature weight for Linear model")
-# plt.show()
-# print('accuracy of the Linear model: ', metrics.accuracy_score(y_test,clf.predict(x_test)))
+# ----- Calculate patameters weight for linear model -----
+linear_svm = svm.SVC(kernel = 'linear', random_state = 0)
+clf = linear_svm.fit(x_train, y_train)
+print('Weight of the Linear model: ', clf.coef_)
+plt.barh(feature, abs(clf.coef_[0]))
+plt.xlabel("Feature weight for Linear model")
+plt.show()
+print('accuracy of the Linear model: ', metrics.accuracy_score(y_test,clf.predict(x_test)))
 
-# end_time = time.time()
-# print("The run time of the code is %f seconds" %(end_time - start_time))
+end_time = time.time()
+print("The run time of the code is %f seconds" %(end_time - start_time))

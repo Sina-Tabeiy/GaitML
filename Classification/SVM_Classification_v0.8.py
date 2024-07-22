@@ -1,30 +1,29 @@
 # --------------- INTRO ---------------
 
 # This version is working based on v0.0, The modifications involve:
-# - Adding gridsearch to tune hyperparameters.
-# - Adding StandardScaler and MinMaxScaler (Normalizer).
-# - Adding Permutation Importance to the best estimator of the GridSearchCV.
-# - Adding coefficient matrix to get the feature importance for the linear model.
-# - Adding Beysian optimization instead of the GridSearchCV.
 # - Adding mean value of kinematics.
+# - Adding StandardScaler and MinMaxScaler (Normalizer).
+# - Adding Bayesian Optimization to tune the hyperparameters.
+# - Adding coefficient matrix to get the feature importance for the linear model.
+# - Adding SHAP.
 
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
 # ------------------------------
+
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import os
+from scipy.stats import skewtest, kurtosistest
 import sys
 import time
-import sklearn.svm
+import shap
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurextractor
 
@@ -58,13 +57,21 @@ demo_val = np.repeat(demo_val, 2, axis = 0)
 
 all_data = np.concatenate((all_data, demo_val), axis=1)
 
+sktst = skewtest(all_data) #short form of skewtest
+print("Skewness values:\n", sktst.statistic)
+print("Skewness test p-values:\n ", sktst.pvalue)
+kurtst = kurtosistest(all_data) #short form of kurtosis test
+print("Kurtosis values:\n", kurtst.statistic)
+print("Kurtosis test p-values:\n", kurtst.pvalue)
+
+
 # ----- Load the final result and label the data -----
 gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
 gps.drop(columns=['Unnamed: 0'], inplace=True)
 diffrence = np.diff(gps,axis=1)
 labels = np.where(diffrence < significance_value, 1, 0).flatten()
 
-# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False with the file which consider legs togeather
+# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False with the file which consider legs together
 # DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
 # labels = np.repeat(labels, 2)
 
@@ -81,34 +88,30 @@ scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
 
+
 # ----- Bayesian Optimization -----
 
 def svm_model(C, gamma,kernel_index):
     kernel = kernel_names[int(kernel_index)]
     SVM = svm.SVC(kernel=kernel, C=C, gamma=gamma, random_state=0)
     acc = cross_val_score(SVM, x_train, y_train, cv=5)
-    # SVM.fit(x_train,y_train)
-    # y_hat = SVM.predict(x_test)
-    # acc = metrics.accuracy_score(y_test, y_hat)
     return acc.mean()
 
 print('************************************')
 print('Bayesian Optimization initiated.')
-
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
 kernel_names = ['poly']
+
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
             'C': (1,1000),
             'gamma': (0.001, 1),
-            # 'degree': (2,5)  # Only relevant for 'poly' kernel
-            # 'coef0': [0.0, 0.1, 0.5, 1.0]  # Only relevant for 'poly' and 'sigmoid' kernels
             }
 
 optimizer = BayesianOptimization( f = svm_model, pbounds = pbounds, random_state=0, verbose=3)
 optimizer.maximize(init_points=5, n_iter=50)
 best_parameters = optimizer.max['params']
-
+best_parameters['C'] = float(best_parameters['C'])
 
 print("********** Best parameters ********** ")
 print("The best parameters are: ", optimizer.max)
@@ -119,35 +122,35 @@ y_hat = SVM_best.predict(x_test)
 print("Test set score: ", SVM_best.score(x_test, y_test))
 print(metrics.classification_report(y_test, y_hat))
 
-# ----- Condusion Matrix -----
+# ----- Confusion Matrix -----
 labels = ['Non-responder', 'Responder']
-confustion_mat = confusion_matrix(y_true=y_test, y_pred=y_hat)
-disp = ConfusionMatrixDisplay(confustion_mat,display_labels=labels)
+confusion_mat = confusion_matrix(y_true=y_test, y_pred=y_hat)
+disp = ConfusionMatrixDisplay(confusion_mat, display_labels=labels)
 disp.plot()
 plt.show()
 
-# ----- Calculate parameters weight for the best non-linear model -----
-fw = permutation_importance(SVM_best, x_test, y_test, n_repeats = 20, n_jobs=-1, random_state = 0)
-for i in range(len(fw.importances_mean)):
-        print(f"{fw.importances_mean[i]:.3f} +/- {fw.importances_std[i]:.3f}")
+# ----- Calculate SHAP values for the best non-linear model -----
+explainer = shap.KernelExplainer(SVM_best.predict, x_train)
+shap_values = explainer.shap_values(x_test)
 
 
-# feature = [s[0] + m for s in side for m in measurements] # ----- If separate_legs = False -----
-feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]] # ----- If separate_legs = True -----
+
+
+# feature = [s[0] + m for s in side for m in measurements] # If separate_legs = False
+feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]] # If separate_legs = True
 feature = feature + list(demo_var.columns)
-plt.barh(feature, fw.importances_mean)
-plt.xlabel("Permutation Importance")
+
+# Plot SHAP values
+shap.summary_plot(shap_values, x_test, feature_names=feature)
+
+# ----- Calculate parameters weight for linear model -----
+linear_svm = svm.SVC(kernel = 'linear', random_state = 0)
+clf = linear_svm.fit(x_train, y_train)
+print('Weight of the Linear model: ', clf.coef_)
+plt.barh(feature, abs(clf.coef_[0]))
+plt.xlabel("Feature weight for Linear model")
 plt.show()
+print('accuracy of the Linear model: ', metrics.accuracy_score(y_test, clf.predict(x_test)))
 
-
-# # ----- Calculate patameters weight for linear model -----
-# linear_svm = svm.SVC(kernel = 'linear', random_state = 0)
-# clf = linear_svm.fit(x_train, y_train)
-# print('Weight of the Linear model: ', clf.coef_)
-# plt.barh(feature, abs(clf.coef_[0]))
-# plt.xlabel("Feature weight for Linear model")
-# plt.show()
-# print('accuracy of the Linear model: ', metrics.accuracy_score(y_test,clf.predict(x_test)))
-
-# end_time = time.time()
-# print("The run time of the code is %f seconds" %(end_time - start_time))
+end_time = time.time()
+print("The run time of the code is %f seconds" % (end_time - start_time))

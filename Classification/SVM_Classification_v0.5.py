@@ -1,11 +1,10 @@
 # --------------- INTRO ---------------
 
 # This version is working based on v0.0, The modifications involve:
-# - Adding gridsearch to tune hyperparameters.
 # - Adding StandardScaler and MinMaxScaler (Normalizer).
-# - Adding Permutation Importance to the best estimator of the GridSearchCV.
+# - Adding Bayesian Optimization to tune the hyperparameters.
 # - Adding coefficient matrix to get the feature importance for the linear model.
-# - Adding Beysian optimization instead of the GridSearchCV.
+# - Adding Permutation importance.
 
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
@@ -20,12 +19,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.inspection import permutation_importance
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
-
-import os
 import sys
 import time
-
-import sklearn.svm
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurextractor
 

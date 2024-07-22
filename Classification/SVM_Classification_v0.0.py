@@ -33,8 +33,8 @@ significance_value = -1
 all_data = featurextractor.feature_extractor(file_directory, measurements, output_dir, separate_legs = False)
 df = pd.read_csv(r"D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\CSV Output\all_files.csv")
 print(df.describe())
-print("Skewness:\n", skew(all_data))
-print("Kutosis:\n", kurtosis(all_data))
+print("Skewness:\n", skew(all_data,axis=0))
+print("Kutosis:\n", kurtosis(all_data, axis=0))
 
 # ----- Load the final result and label the data -----
 gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_all\GPS_output.csv')
