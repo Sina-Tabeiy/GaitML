@@ -223,11 +223,12 @@ def mean_feature_extractor (directory, measurements, output_dir, separate_legs, 
                             for joint in (joint_names):
                                 for side in sides:
                                     joint_with_side = side + joint
-                                    header.append(joint_with_side)
                                     joint_kin = all_data[0,0][joint_with_side][0][0]
                                     joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
                                     joint_kin = np.mean(joint_kin, axis = 0)
                                     joint_data.append(joint_kin)
+                                    joint_with_side = [joint_with_side[1:]+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                    header.extend(joint_with_side)
 
                         else: 
                             header.append(measurement)
@@ -242,8 +243,8 @@ def mean_feature_extractor (directory, measurements, output_dir, separate_legs, 
                 joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
                 joint_data = joint_data.reshape(1,-1)
                 combined_data.append(joint_data)
-                joint_data_side = pd.DataFrame(joint_data)
-                joint_data_side.to_csv(output_dir + '\Subject%d_%s_Lokomat.csv' % ((file_number +1), side_struct[0]), header = False, index = False)
+                joint_data_side = pd.DataFrame(joint_data, columns=header)
+                joint_data_side.to_csv(output_dir + '\Subject%d_%s_Lokomat.csv' % ((file_number +1), side_struct[0]), index = False)
         
             print("The data for the Subject %d is extracted, separated legs." %(file_number+1))
 
@@ -267,11 +268,12 @@ def mean_feature_extractor (directory, measurements, output_dir, separate_legs, 
                             for joint in (joint_names):
                                 for side in sides:
                                     joint_with_side = side + joint
-                                    header.append(joint_with_side)
                                     joint_kin = all_data[0,0][joint_with_side][0][0]
                                     joint_kin = np.reshape(joint_kin, (100,3), order = 'F')
                                     joint_kin = np.mean(joint_kin, axis = 0)
                                     joint_data.append(joint_kin)
+                                    joint_with_side = [joint_with_side+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                    header.extend(joint_with_side)
 
                         else: 
                             header.append(measurement)
@@ -287,16 +289,16 @@ def mean_feature_extractor (directory, measurements, output_dir, separate_legs, 
             joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
             joint_data = joint_data.reshape(1,-1)
             combined_data.append(joint_data)
-            joint_data_side = pd.DataFrame(joint_data)
-            joint_data_side.to_csv(output_dir + '\Subject%d_Lokomat.csv' %(file_number +1), header = False, index = False)
+            joint_data_side = pd.DataFrame(joint_data, columns=header)
+            joint_data_side.to_csv(output_dir + '\Subject%d_Lokomat.csv' %(file_number +1), index = False)
             print("The data for the Subject %d is extracted, both legs together." %(file_number+1))
 
     combined_data = np.concatenate(combined_data) # Flatten the joint_data to get it ready for reshapeing.
     combined_data = combined_data.reshape(count,-1)
-    print(header)
-    all_files = pd.DataFrame(combined_data)
-    all_files.to_csv(output_dir + r'\all_files.csv', header = False, index = False)
-    return combined_data
+    all_files = pd.DataFrame(combined_data, columns=header)
+    all_files.to_csv(output_dir + r'\all_files.csv', index = False)
+    return all_files    # while outputting pandas dataframe
+    # return combined_data  # While outputting numpy array
 
 # mean_feature_extractor(directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample', 
 #                   measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose'],
