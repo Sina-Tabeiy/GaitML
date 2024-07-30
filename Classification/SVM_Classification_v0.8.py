@@ -2,6 +2,7 @@
 
 # This version is working based on v0.0, The modifications involve:
 # - Adding mean value of kinematics.
+# - Adding Minimum Residuals Maximum Relevance (MRMR) for feature selection.
 # - Adding StandardScaler and MinMaxScaler (Normalizer).
 # - Adding Bayesian Optimization to tune the hyperparameters.
 # - Adding coefficient matrix to get the feature importance for the linear model.
@@ -10,7 +11,6 @@
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
 # ------------------------------
-
 
 import numpy as np
 import pandas as pd
@@ -25,17 +25,20 @@ import sys
 import time
 import shap
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
-import featurextractor
+import featurExtractor, featureSelection
+
+
 
 
 # --------------- Load Data ---------------
 
 # ----- Define variables -----
 file_directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Pre Data'
-# measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
-measurements = ['angAtFullCycle','pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
-# joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
-joint_name = ['Hip', 'Knee', 'Ankle']
+# example: measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
+measurements = ['angAtFullCycle','pctToeOff', 'pctToeOffOppose', 'pctSimpleAppuie',
+                'distPas', 'distFoulee', 'tempsFoulee', 'vitFoulee', 'vitCadencePasParMinute']
+# example: joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+joint_name = ['Hip', 'Knee', 'Ankle', 'FootProgress']
 side = ['Right', 'Left']
 output_dir = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\CSV Output'
 significance_value = -1
@@ -43,53 +46,56 @@ significance_value = -1
 # ----- Extract variables from .mat files -----
 # The output data will be in the order of all pre intervention files and then all post intervention files. 
 # Since the folder only contains Pre data so we are gonna have the pre data only. 
-all_data = featurextractor.mean_feature_extractor(file_directory, measurements, output_dir, separate_legs = True, joint_names = joint_name)
-if isinstance(all_data, pd.DataFrame):
-    all_data = all_data.values
+all_data = featurExtractor.mean_feature_extractor(file_directory, measurements, output_dir, separate_legs = True, joint_names = joint_name)
 
 # ----- Add participants demographic variables -----
 demo_var = pd.read_excel(r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Pre Data\Participants_caracteristic_ML.xlsx')
-demo_var.drop(['Patient', 'sex','masse', 'taille', 'Diagnostique'], axis = 1, inplace= True)
+demo_var.drop(['Patient', 'sex', 'Diagnostique'], axis = 1, inplace= True)
 demo_var.replace(['walker', 'cane', 'none'], [3,2,1], inplace=True)
-demo_val = demo_var.values
-# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
-demo_val = np.repeat(demo_val, 2, axis = 0)
+# ********* ACTION REQUIRED *********:
+#           IF RUNNING WITH separate_legs = False, DEACTIVATE THE FOLLOWING LINE.
+#           OTHERWISE, KEEP IT ACTIVATED.
+demo_var = demo_var.loc[demo_var.index.repeat(2)].reset_index(drop=True)
 
-all_data = np.concatenate((all_data, demo_val), axis=1)
-feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]] # If separate_legs = True
-feature = feature + list(demo_var.columns)
-sktst = skewtest(all_data) #short form of skewtest
+# ----- Add all features to each other -----
+all_data = pd.concat((all_data, demo_var), axis=1)
+
+# ----- Check the normality of features -----
+sktst = skewtest(all_data.values)
 print("Skewness values:\n", sktst.statistic)
 print("Skewness test p-values:\n ", sktst.pvalue)
-kurtst = kurtosistest(all_data) #short form of kurtosis test
+kurtst = kurtosistest(all_data.values)
 print("Kurtosis values:\n", kurtst.statistic)
 print("Kurtosis test p-values:\n", kurtst.pvalue)
-
 
 # ----- Load the final result and label the data -----
 gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
 gps.drop(columns=['Unnamed: 0'], inplace=True)
-diffrence = np.diff(gps,axis=1)
-labels = np.where(diffrence < significance_value, 1, 0).flatten()
-
-# *******ACTION REQUIRED*********: IF RUNNING WITH separate_legs = False with the file which consider legs together
-# DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
+diffrence = gps['Post'] - gps['Pre']
+labels = diffrence.where(diffrence<significance_value,0)
+labels = labels.where(labels>=significance_value,1)
+labels = labels.astype(int)     #to have integers in the labels not float.
+# ********* ACTION REQUIRED *********: 
+#           IF RUNNING WITH separate_legs = False with the file which consider legs together
+#           DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
 # labels = np.repeat(labels, 2)
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
-start_time = time.time()
+
+# ----- Select features ------
+selectedFeatures= featureSelection.selector(allfeatures=all_data, label=labels, number_of_important_features= 10)
+selected_data = all_data[selectedFeatures]
+labels = labels.values
+selected_data = selected_data.values
 
 # ----- Train / test Split -----
-x_train, x_test, y_train, y_test = train_test_split(all_data, labels, test_size = 0.25, random_state = 0)
+x_train, x_test, y_train, y_test = train_test_split(selected_data, labels, test_size = 0.25, random_state = 0)
 
 # ----- Scale the data -----
 normalizer = MinMaxScaler()
 scaler = StandardScaler()
-
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
-
-
 
 # ----- Bayesian Optimization -----
 
@@ -102,7 +108,7 @@ def svm_model(C, gamma,kernel_index):
 print('************************************')
 print('Bayesian Optimization initiated.')
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
-kernel_names = ['rbf']
+kernel_names = ['poly']
 
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
@@ -135,24 +141,5 @@ plt.show()
 explainer = shap.KernelExplainer(SVM_best.predict, x_train)
 shap_values = explainer.shap_values(x_test)
 
-
-
-
-# feature = [s[0] + m for s in side for m in measurements] # If separate_legs = False
-feature = [j + axis for j in joint_name for axis in ['x', 'y', 'z']] + [ m for m in measurements[1:]] # If separate_legs = True
-feature = feature + list(demo_var.columns)
-
 # Plot SHAP values
-shap.summary_plot(shap_values, x_test, feature_names=feature)
-
-# ----- Calculate parameters weight for linear model -----
-linear_svm = svm.SVC(kernel = 'linear', random_state = 0)
-clf = linear_svm.fit(x_train, y_train)
-print('Weight of the Linear model: ', clf.coef_)
-plt.barh(feature, abs(clf.coef_[0]))
-plt.xlabel("Feature weight for Linear model")
-plt.show()
-print('accuracy of the Linear model: ', metrics.accuracy_score(y_test, clf.predict(x_test)))
-
-end_time = time.time()
-print("The run time of the code is %f seconds" % (end_time - start_time))
+shap.summary_plot(shap_values, x_test, feature_names=selectedFeatures)

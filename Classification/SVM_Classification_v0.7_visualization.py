@@ -65,7 +65,42 @@ kurtst = kurtosistest(all_data) #short form of kurtosis test
 print("Kurtosis values:\n", kurtst.statistic)
 print("Kurtosis test p-values:\n", kurtst.pvalue)
 
+"""
+df_skew = pd.DataFrame({'Feature': feature, 'Statistic': sktst.statistic, 'Pvalue': sktst.pvalue})
+df_kurt = pd.DataFrame({'Feature': feature, 'Statistic': kurtst.statistic, 'Pvalue': kurtst.pvalue})
 
+# Sort the dataframes
+df_skew = df_skew.sort_values(by='Statistic')
+df_kurt = df_kurt.sort_values(by='Statistic')
+
+# Define a threshold for high values
+threshold = 2
+pthreshold = 0.05
+
+# Plot Skewness with conditional coloring
+plt.figure(figsize=(10, 5))
+plt.barh(df_skew['Feature'], df_skew['Statistic'], color=['skyblue' if abs(x) < threshold else 'lightcoral' for x in df_skew['Statistic']])
+plt.title('Skewness for each feature')
+plt.show()
+
+# Plot Skewness p-values with conditional coloring
+plt.figure(figsize=(10, 5))
+plt.barh(df_skew['Feature'], df_skew['Pvalue'], color=['lightcoral' if abs(x) < pthreshold else 'skyblue' for x in df_skew['Pvalue']])
+plt.title('Skewness test p-values for each feature')
+plt.show()
+
+# Plot Kurtosis with conditional coloring
+plt.figure(figsize=(10, 5))
+plt.barh(df_kurt['Feature'], df_kurt['Statistic'], color=['skyblue' if abs(x) < threshold else 'lightcoral' for x in df_kurt['Statistic']])
+plt.title('Kurtosis for each feature')
+plt.show()
+
+# Plot Kurtosis p-values with conditional coloring
+plt.figure(figsize=(10, 5))
+plt.barh(df_kurt['Feature'], df_kurt['Pvalue'], color=['lightcoral' if abs(x) < pthreshold else 'skyblue' for x in df_kurt['Pvalue']])
+plt.title('Kurtosis test p-values for each feature')
+plt.show()
+"""
 # ----- Load the final result and label the data -----
 gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
 gps.drop(columns=['Unnamed: 0'], inplace=True)
@@ -90,15 +125,14 @@ x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
 
 
-
 # ----- Bayesian Optimization -----
 
 def svm_model(C, gamma,kernel_index):
     kernel = kernel_names[int(kernel_index)]
     SVM = svm.SVC(kernel=kernel, C=C, gamma=gamma, random_state=0)
-    acc = cross_val_score(SVM, x_train, y_train, cv=5)
+    acc = cross_val_score(SVM, x_train, y_train)
     return acc.mean()
-
+ 
 print('************************************')
 print('Bayesian Optimization initiated.')
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
@@ -131,6 +165,8 @@ disp = ConfusionMatrixDisplay(confusion_mat, display_labels=labels)
 disp.plot()
 plt.show()
 
+
+"""
 # ----- Calculate SHAP values for the best non-linear model -----
 explainer = shap.KernelExplainer(SVM_best.predict, x_train)
 shap_values = explainer.shap_values(x_test)
@@ -156,3 +192,4 @@ print('accuracy of the Linear model: ', metrics.accuracy_score(y_test, clf.predi
 
 end_time = time.time()
 print("The run time of the code is %f seconds" % (end_time - start_time))
+"""
