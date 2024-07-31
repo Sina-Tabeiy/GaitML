@@ -83,7 +83,7 @@ labels = labels.astype(int)     #to have integers in the labels not float.
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 
 # ----- Select features ------
-selectedFeatures= featureSelection.selector(allfeatures=all_data, label=labels, number_of_important_features= 10)
+selectedFeatures= featureSelection.selector(allfeatures=all_data, label=labels, number_of_important_features= 1)
 selected_data = all_data[selectedFeatures]
 labels = labels.values
 selected_data = selected_data.values
