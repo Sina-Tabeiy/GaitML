@@ -101,7 +101,7 @@ def feature_extractor (directory, measurements, output_dir, *joint_names):
 # This function output the specified measurements for each side the diffrence
 # with the function <<feature_extractor>> is that this function calculates the output separately.
 """
-def feature_extractor (directory, measurements, output_dir, separate_legs, *joint_names):
+def feature_extractor (directory, measurements, output_dir, separate_legs,*joint_names):
     
     combined_data = []
     data_names = organized(directory)
@@ -193,7 +193,14 @@ def feature_extractor (directory, measurements, output_dir, separate_legs, *join
     all_files.to_csv(output_dir + r'\all_files.csv', header = False, index = False)
     return combined_data
 
-def mean_feature_extractor (directory, measurements, output_dir, separate_legs, joint_names):
+
+#  Mean calculation is not correct in this funcion since it computes mean for the whole cycle while it should be during stance phase.
+def mean_feature_extractor (*,directory, measurements, output_dir,
+                            separate_legs: bool,
+                            output_shape= pd.DataFrame,
+                            joint_names=['Hip', 'Knee', 'Ankle', 'FootProgress']):
+    # The function calculates the mean value of kinematic parameters during the whole gait cycle.
+    # Outout: mean value of each
     count = 0
     combined_data = []
     data_names = organized(directory)
@@ -297,11 +304,150 @@ def mean_feature_extractor (directory, measurements, output_dir, separate_legs, 
     combined_data = combined_data.reshape(count,-1)
     all_files = pd.DataFrame(combined_data, columns=header)
     all_files.to_csv(output_dir + r'\all_files.csv', index = False)
-    return all_files    # while outputting pandas dataframe
-    # return combined_data  # While outputting numpy array
+
+    if output_shape == pd.DataFrame:
+        return all_files    # while outputting pandas dataframe
+    else:
+        return combined_data  # While outputting numpy array
+
+# %% Calculates the minimum and maximum values of joints degrees of freedom.
+def MinMax_feature_extractor(*,directory, measurements, output_dir,
+                            separate_legs: bool,
+                            output_shape= pd.DataFrame,
+                            joint_names=['Pelvis', 'Hip', 'Knee', 'Ankle', 'FootProgress']):
+    # The function calculates the mean value of kinematic parameters during the whole gait cycle.
+    # Outout: min and max value of each
+    count = 0
+    combined_data = []
+    data_names = organized(directory)
+    if 'angMaxAtFullStance' not in measurements:
+        measurements.insert(0,'angMaxAtFullStance')
+    if 'angMinAtFullStance' not in measurements:
+        measurements.insert(0,'angMinAtFullStance')
+
+    for file_number, file in enumerate(data_names, start = 0):
+        file_path = str()
+        file_path = os.path.join(directory, file)
+        data = load_data(file_path)
+        side_structs = ['Right', 'Left']
+
+# -------- Calculate while the info should be extracted separately --------
+        if separate_legs == True:
+            
+            for side_struct in side_structs:
+                joint_data = []
+                header = []
+                count += 1
+
+                for measurement in measurements:
+                    structs = ['c', 'results', side_struct, measurement]
+                    all_data = access_struct(data,structs)
+
+                    
+                    if measurement == 'angMinAtFullStance':
+                        sides = side_struct[0]
+                        for joint in (joint_names):
+                            for side in sides:
+                                joint_with_side = side + joint
+                                joint_kin = all_data[0,0][joint_with_side][0]
+                                joint_data.append(joint_kin)
+                                joint_with_side = ['Min'+'_'+joint_with_side[1:]+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                header.extend(joint_with_side)
+
+                    elif measurement == 'angMaxAtFullStance':
+                        sides = side_struct[0]
+                        for joint in (joint_names):
+                            for side in sides:
+                                joint_with_side = side + joint
+                                joint_kin = all_data[0,0][joint_with_side][0]
+                                joint_data.append(joint_kin)
+                                joint_with_side = ['Max'+'_'+joint_with_side[1:]+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                header.extend(joint_with_side)
+                    
+                    elif measurement == 'baseSustentation':
+                        joint_kin = all_data[0,0]['maxPreMoyenne'][0]
+                        joint_data.append(joint_kin)
+                        joint_with_side = ['Max'+'_'+side_struct+ '_'+'BOS']
+                        header.extend(joint_with_side)
+                    
+                    else: 
+                        header.append(measurement)
+                        spatiotemporal_variable = np.asanyarray([all_data[0][0]])                            
+                        joint_data.append(spatiotemporal_variable)
+                
+                joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
+                joint_data = joint_data.reshape(1,-1)
+                combined_data.append(joint_data)
+                joint_data_side = pd.DataFrame(joint_data, columns=header)
+                joint_data_side.to_csv(output_dir + '\Subject%d_%s_Lokomat.csv' % ((file_number +1), side_struct[0]), index = False)
+        
+            print("The data for the Subject %d is extracted, separated legs." %(file_number+1))
+
+# -------- Calculate while the info should be extracted together --------
+        else:
+            joint_data = []
+            header = []
+            count += 1
+            for side_struct in side_structs:
+                
+                for measurement in measurements:
+                    
+                    structs = ['c', 'results', side_struct, measurement]
+                    all_data = access_struct(data,structs)
+
+                    if measurement == 'angMinAtFullStance':
+                        sides = side_struct[0]
+                        for joint in (joint_names):
+                            for side in sides:
+                                joint_with_side = side + joint
+                                joint_kin = all_data[0,0][joint_with_side][0][0]
+                                joint_data.append(joint_kin)
+                                joint_with_side = ['Min'+'_'+joint_with_side+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                header.extend(joint_with_side)
+
+                    elif measurement == 'angMaxAtFullStance':
+                        sides = side_struct[0]
+                        for joint in (joint_names):
+                            for side in sides:
+                                joint_with_side = side + joint
+                                joint_kin = all_data[0,0][joint_with_side][0][0]
+                                joint_data.append(joint_kin)
+                                joint_with_side = ['Max'+'_'+joint_with_side+'_'+direction for direction in ['flx/ext', 'abd/add', 'int/ext rot']]
+                                header.extend(joint_with_side)
+                    
+                    elif measurement == 'baseSustentation':
+                        joint_kin = all_data[0,0]['maxPreMoyenne'][0]
+                        joint_data.append(joint_kin)
+                        joint_with_side = ['Max'+'_'+side_struct+ '_'+'BOS']
+                        header.extend(joint_with_side)
+                    
+                    else: 
+                        header.append(measurement)
+                        spatiotemporal_variable = np.asanyarray([all_data[0][0]])                            
+                        joint_data.append(spatiotemporal_variable)
+
+            
+
+            joint_data = np.concatenate(joint_data) # Flatten the joint_data to get it ready for reshapeing.
+            joint_data = joint_data.reshape(1,-1)
+            combined_data.append(joint_data)
+            joint_data_side = pd.DataFrame(joint_data, columns=header)
+            joint_data_side.to_csv(output_dir + '\Subject%d_Lokomat.csv' %(file_number +1), index = False)
+            print("The data for the Subject %d is extracted, both legs together." %(file_number+1))
+
+    combined_data = np.concatenate(combined_data) # Flatten the joint_data to get it ready for reshapeing.
+    combined_data = combined_data.reshape(count,-1)
+    all_files = pd.DataFrame(combined_data, columns=header)
+    all_files.to_csv(output_dir + r'\all_files.csv', index = False)
+
+    if output_shape == pd.DataFrame:
+        return all_files    # while outputting pandas dataframe
+    else:
+        return combined_data  # While outputting numpy array
 
 # mean_feature_extractor(directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample', 
 #                   measurements = ['angAtFullCycle', 'pctToeOff', 'pctToeOffOppose'],
 #                   separate_legs = False,
 #                   output_dir = 'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample',
 #                   joint_names = ['Hip', 'Knee', 'Ankle'])
+
