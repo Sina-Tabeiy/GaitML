@@ -14,10 +14,6 @@
 # ------------------------------
 
 
-# step width and base of support
-# add GPS to features
-# 
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
