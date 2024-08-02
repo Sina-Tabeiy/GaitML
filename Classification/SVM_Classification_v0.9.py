@@ -13,8 +13,14 @@
 # The code works way better while having the legs seprated.
 # ------------------------------
 
+
+# step width and base of support
+# add GPS to features
+# 
+
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -23,7 +29,6 @@ from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from scipy.stats import skewtest, kurtosistest
 import sys
-import time
 import shap
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
 import featurExtractor, featureSelection
@@ -37,7 +42,7 @@ import featurExtractor, featureSelection
 file_directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample'
 # example: measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
 measurements = ['angAtFullCycle','pctToeOff', 'pctToeOffOppose', 'pctSimpleAppuie',
-                'distPas', 'distFoulee', 'tempsFoulee', 'vitFoulee', 'vitCadencePasParMinute']
+                 'distFoulee', 'tempsFoulee', 'vitFoulee', 'vitCadencePasParMinute']
 # example: joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
 joint_name = ['Hip', 'Knee', 'Ankle', 'FootProgress']
 side = ['Right', 'Left']
@@ -67,15 +72,22 @@ for i in range(len(label_prep['GMFCS'])):
 
     # if  (min(GMFCS_MCID[label_prep['GMFCS'][i]]) <= label_prep['delta'][i]) and (label_prep['delta'][i] <= max(GMFCS_MCID[label_prep['GMFCS'][i]])):
     #     MCID.append(1)
-    if label_prep['delta'][i] >= max(GMFCS_MCID[label_prep['GMFCS'][i]]):
+    if label_prep['delta'][i] >= min(GMFCS_MCID[label_prep['GMFCS'][i]]):
         MCID.append(1)
     else:
         MCID.append(0)
-MCID = pd.Series(MCID)
 
-# ----- Add all features to each other -----
+print(MCID)
+MCID = pd.Series(MCID)
 demo_var.drop(['delta'], axis = 1, inplace= True)
 all_data = pd.concat((kin_var, demo_var), axis=1)
+
+# --------------- Feature analysis ---------------
+
+# ----- Correlation -----
+correlation_matrix = all_data.corr()
+sns.heatmap(correlation_matrix, annot= True, cmap = 'coolwarm')
+plt.show()
 
 # ----- Check the normality of features -----
 sktst = skewtest(all_data.values)
@@ -85,16 +97,15 @@ kurtst = kurtosistest(all_data.values)
 print("Kurtosis values:\n", kurtst.statistic)
 print("Kurtosis test p-values:\n", kurtst.pvalue)
 
-# ********* ACTION REQUIRED *********: 
-#           IF RUNNING WITH separate_legs = False with the file which consider legs together
-#           DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
-# labels = np.repeat(labels, 2)
-
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 
 # ----- Select features ------
 selectedFeatures= featureSelection.selector(allfeatures=all_data, label=MCID, number_of_important_features= 10)
 selected_data = all_data[selectedFeatures]
+print(selected_data)
+correlation_matrix = selected_data.corr()
+sns.heatmap(correlation_matrix, annot= True, cmap = 'coolwarm')
+plt.show()
 selected_data = selected_data.values
 
 # ----- Train / test Split -----
@@ -111,7 +122,7 @@ x_test = scaler.transform(x_test)
 def svm_model(C, gamma,kernel_index):
     kernel = kernel_names[int(kernel_index)]
     SVM = svm.SVC(kernel=kernel, C=C, gamma=gamma, random_state=0)
-    acc = cross_val_score(SVM, x_train, y_train, cv=5)
+    acc = cross_val_score(SVM, x_train, y_train, cv=10)
     return acc.mean()
 
 print('************************************')
@@ -126,7 +137,7 @@ pbounds = {
             }
 
 optimizer = BayesianOptimization( f = svm_model, pbounds = pbounds, random_state=0, verbose=3)
-optimizer.maximize(init_points=5, n_iter=50)
+optimizer.maximize(init_points=20, n_iter=100)
 best_parameters = optimizer.max['params']
 best_parameters['C'] = float(best_parameters['C'])
 
