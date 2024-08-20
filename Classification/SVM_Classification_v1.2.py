@@ -24,11 +24,11 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from scipy.stats import skewtest, kurtosistest, boxcox
+from scipy.stats import skewtest, kurtosistest
 import sys
 import shap
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
@@ -96,7 +96,6 @@ for i in range(len(label_prep['GMFCS'])):
     else:
         MCID.append(0)
 
-print(MCID)
 MCID = pd.Series(MCID)
 demo_var.drop(['delta'], axis = 1, inplace= True)
 all_data = pd.concat((kin_var, demo_var), axis=1)
@@ -110,18 +109,25 @@ all_data = pd.concat((kin_var, demo_var), axis=1)
 
 # ----- Check the normality of features -----
 sktst = skewtest(all_data.values)
+print("Skewness values:\n", sktst.statistic)
+print("Skewness test p-values:\n ", sktst.pvalue)
+kurtst = kurtosistest(all_data.values)
+print("Kurtosis values:\n", kurtst.statistic)
+print("Kurtosis test p-values:\n", kurtst.pvalue)
+
+# abnormally_distributed_indx = [-2 > x or x > 2 for x in sktst.statistic]
+# abnormal_data_columns = [all_data.columns[i] for i in range(len(abnormally_distributed_indx)) if abnormally_distributed_indx[i]]
+# abnormal_data = all_data[abnormal_data_columns]
+# transformer = PowerTransformer(method='yeo-johnson')
+# transformed_data = transformer.fit_transform(abnormal_data.values)
+# all_data[abnormal_data_columns] = transformed_data
+
+# sktst = skewtest(all_data.values)
 # print("Skewness values:\n", sktst.statistic)
 # print("Skewness test p-values:\n ", sktst.pvalue)
 # kurtst = kurtosistest(all_data.values)
 # print("Kurtosis values:\n", kurtst.statistic)
 # print("Kurtosis test p-values:\n", kurtst.pvalue)
-
-abnormally_distributed_indx = [-2 > x or x > 2 for x in sktst.statistic]
-abnormal_data_columns = [all_data.columns[i] for i in range(len(abnormally_distributed_indx)) if abnormally_distributed_indx[i]]
-abnormal_data = all_data[abnormal_data_columns]
-transformed_data, lam = boxcox(abnormal_data.values)
-sktst = skewtest(transformed_data)
-print("Skewness values:\n", sktst.statistic)
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 
@@ -136,7 +142,7 @@ selected_data = all_data[selectedFeatures]
 selected_data = selected_data.values
 
 # ----- Train / test Split -----
-x_train, x_test, y_train, y_test = train_test_split(selected_data, MCID, test_size = 0.25, random_state = 0)
+x_train, x_test, y_train, y_test = train_test_split(selected_data, MCID, test_size = 0.25, random_state=0)
 
 # ----- Scale the data -----
 normalizer = MinMaxScaler()
@@ -146,25 +152,27 @@ x_test = scaler.transform(x_test)
 
 # ----- Bayesian Optimization -----
 
-def svm_model(C, gamma,kernel_index):
+def svm_model(C, gamma, degree, coef0, kernel_index):
     kernel = kernel_names[int(kernel_index)]
-    SVM = svm.SVC(kernel=kernel, C=C, gamma=gamma, random_state=0)
+    SVM = svm.SVC(kernel=kernel, C=C, degree = int(degree), coef0 = coef0, gamma=gamma, random_state=0)
     acc = cross_val_score(SVM, x_train, y_train, cv=5)
     return acc.mean()
 
 print('************************************')
 print('Bayesian Optimization initiated.')
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
-kernel_names = ['rbf']
+kernel_names = ['poly']
 
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
             'C': (1,1000),
             'gamma': (0.001, 1),
+            'degree': (2,5),
+            'coef0': (-1,1)
             }
 
 optimizer = BayesianOptimization( f = svm_model, pbounds = pbounds, random_state=0, verbose=3)
-optimizer.maximize(init_points=20, n_iter=100)
+optimizer.maximize(init_points=50, n_iter=300)
 best_parameters = optimizer.max['params']
 best_parameters['C'] = float(best_parameters['C'])
 

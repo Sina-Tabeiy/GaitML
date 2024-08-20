@@ -8,27 +8,22 @@
 # - Adding coefficient matrix to get the feature importance for the linear model.
 # - Adding SHAP.
 # - Changing the labels from GPS to MCID of the 6MWT.
-# - The abnormally distributed data was tranformed using BOXCOX.
+# - Adding SMOTE to oversample the non-responder group.
 
 # --------------- NOTE ---------------
 # The code works way better while having the legs seprated.
 # ------------------------------
 
-
-# step width and base of support
-# add GPS to features
-# 
-
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn import metrics, svm
 from bayes_opt import BayesianOptimization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from scipy.stats import skewtest, kurtosistest, boxcox
+from scipy.stats import skewtest, kurtosistest
+from imblearn.over_sampling import SMOTE
 import sys
 import shap
 sys.path.append('D:\Sina Tabeiy\Project\Functions')
@@ -42,35 +37,17 @@ import featurExtractor, featureSelection
 # ----- Define variables -----
 file_directory = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample'
 # example: measurements = ['pctToeOff', 'pctSimpleAppuie', 'distPas', 'distFoulee', 'tempsFoulee']
-measurements = ['pctToeOff', 'pctToeOffOppose', 'pctSimpleAppuie',
-                 'distFoulee', 'tempsFoulee', 'vitFoulee', 'baseSustentation', 'vitCadencePasParMinute']
-# default: joint_names = ['Pelvis', 'Hip', 'Knee', 'Ankle', 'FootProgress']
-joint_name = ['Hip', 'Knee', 'Ankle']
+measurements = ['angAtFullCycle','pctToeOff', 'pctToeOffOppose', 'pctSimpleAppuie',
+                'distPas', 'distFoulee', 'tempsFoulee', 'vitFoulee', 'vitCadencePasParMinute']
+# example: joint_names = ['Hip', 'Knee', 'Ankle', 'FootProgress', 'Thorax', 'Pelvis']
+joint_name = ['Hip', 'Knee', 'Ankle', 'FootProgress']
 side = ['Right', 'Left']
-# output_dir = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\CSV Output'
-output_dir = r'D:\Sina Tabeiy\Project\New folder'
+output_dir = r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\CSV Output'
 
 # ----- Extract variables from .mat files -----
 # The output data will be in the order of all pre intervention files and then all post intervention files. 
 # Since the folder only contains Pre data so we are gonna have the pre data only. 
-kin_var = featurExtractor.MinMax_feature_extractor(directory= file_directory,
-                                                 measurements= measurements,
-                                                 output_dir= output_dir,
-                                                 separate_legs = True,
-                                                 output_shape = pd.DataFrame,
-                                                 joint_names = joint_name)
-kin_var.drop(['Min_Knee_abd/add', 'Min_Knee_int/ext rot', 'Min_Ankle_abd/add', 'Min_Ankle_int/ext rot',
-              'Max_Knee_abd/add', 'Max_Knee_int/ext rot', 'Max_Ankle_abd/add', 'Max_Ankle_int/ext rot'],
-              axis=1,
-              inplace=True)
-# ----- fixing the values of cadance -----
-kin_var['vitCadencePasParMinute'] *= 2
-
-# ----- Add GPS to the features -----
-gps = pd.read_csv(r'D:\Sina Tabeiy\Project\Results\GPS_results_separatedlegs\GPS_output.csv', index_col=False)
-gps.drop(columns=['Unnamed: 0', 'Post'], inplace=True)
-gps = gps.loc[gps.index.repeat(2)].reset_index(drop=True)
-all_data = pd.concat((kin_var,gps), axis=1)
+kin_var = featurExtractor.mean_feature_extractor(file_directory, measurements, output_dir, separate_legs = True, joint_names = joint_name)
 
 # ----- Add participants demographic variables -----
 demo_var = pd.read_excel(r'D:\Sina Tabeiy\Project\Lokomat Data (matfiles)\Sample\Participants_caracteristic_ML.xlsx')
@@ -91,49 +68,39 @@ for i in range(len(label_prep['GMFCS'])):
 
     # if  (min(GMFCS_MCID[label_prep['GMFCS'][i]]) <= label_prep['delta'][i]) and (label_prep['delta'][i] <= max(GMFCS_MCID[label_prep['GMFCS'][i]])):
     #     MCID.append(1)
-    if label_prep['delta'][i] >= max(GMFCS_MCID[label_prep['GMFCS'][i]]):
+    if label_prep['delta'][i] >= min(GMFCS_MCID[label_prep['GMFCS'][i]]):
         MCID.append(1)
     else:
         MCID.append(0)
-
-print(MCID)
 MCID = pd.Series(MCID)
+
+# ----- Add all features to each other -----
 demo_var.drop(['delta'], axis = 1, inplace= True)
 all_data = pd.concat((kin_var, demo_var), axis=1)
 
-# --------------- Feature analysis ---------------
-
-# ----- Correlation -----
-# correlation_matrix = all_data.corr()
-# sns.heatmap(correlation_matrix, annot= True, cmap = 'coolwarm')
-# plt.show()
-
 # ----- Check the normality of features -----
 sktst = skewtest(all_data.values)
-# print("Skewness values:\n", sktst.statistic)
-# print("Skewness test p-values:\n ", sktst.pvalue)
-# kurtst = kurtosistest(all_data.values)
-# print("Kurtosis values:\n", kurtst.statistic)
-# print("Kurtosis test p-values:\n", kurtst.pvalue)
-
-abnormally_distributed_indx = [-2 > x or x > 2 for x in sktst.statistic]
-abnormal_data_columns = [all_data.columns[i] for i in range(len(abnormally_distributed_indx)) if abnormally_distributed_indx[i]]
-abnormal_data = all_data[abnormal_data_columns]
-transformed_data, lam = boxcox(abnormal_data.values)
-sktst = skewtest(transformed_data)
 print("Skewness values:\n", sktst.statistic)
+print("Skewness test p-values:\n ", sktst.pvalue)
+kurtst = kurtosistest(all_data.values)
+print("Kurtosis values:\n", kurtst.statistic)
+print("Kurtosis test p-values:\n", kurtst.pvalue)
+
+# ********* ACTION REQUIRED *********: 
+#           IF RUNNING WITH separate_legs = False with the file which consider legs together
+#           DEACTIVATE THE FOLLOWING LINE. OTHERWISE, KEEP IT ACTIVATED.
+# labels = np.repeat(labels, 2)
 
 # --------------- ML algorithm: Support Vector Machine (SVM) ---------------
 
 # ----- Select features ------
-selectedFeatures= featureSelection.selector(allfeatures=all_data, label=MCID, number_of_important_features= len(all_data.columns))
+selectedFeatures= featureSelection.selector(allfeatures=all_data, label=MCID, number_of_important_features= 10)
 selected_data = all_data[selectedFeatures]
-
-# correlation_matrix = selected_data.corr()
-# sns.heatmap(correlation_matrix, annot= True, cmap = 'coolwarm')
-# plt.show()
-
 selected_data = selected_data.values
+
+# ----- Add SMOTE to over sample the non-responder group -----
+smote = SMOTE(random_state=0, n_jobs=-1)
+selected_data, MCID = smote.fit_resample(selected_data, MCID)
 
 # ----- Train / test Split -----
 x_train, x_test, y_train, y_test = train_test_split(selected_data, MCID, test_size = 0.25, random_state = 0)
@@ -155,7 +122,7 @@ def svm_model(C, gamma,kernel_index):
 print('************************************')
 print('Bayesian Optimization initiated.')
 # kernel_names = ['linear', 'poly', 'rbf', 'sigmoid']
-kernel_names = ['rbf']
+kernel_names = ['poly']
 
 pbounds = {
             'kernel_index' : (0, len(kernel_names)-1),
@@ -164,7 +131,7 @@ pbounds = {
             }
 
 optimizer = BayesianOptimization( f = svm_model, pbounds = pbounds, random_state=0, verbose=3)
-optimizer.maximize(init_points=20, n_iter=100)
+optimizer.maximize(init_points=5, n_iter=50)
 best_parameters = optimizer.max['params']
 best_parameters['C'] = float(best_parameters['C'])
 
